@@ -30,16 +30,26 @@ The full catalog has 31 operations; the student profile has 28. Refresh the regi
 3. Provide a tunnel Read + Use key locally; retain it in process environment or Windows DPAPI, never source files or chat.
 4. Configure `scripts/Connect-Work.ps1` with the actual tunnel ID, official client and private runtime.
 5. Verify with `Run-Work-Connection.ps1 -ConnectOnce`. Use `Enable-Work-Connection.ps1` for the current user's authorised logon connection.
-6. Register one UoE Companion using that tunnel, install/connect it in ChatGPT, refresh its tools and complete the campus login when required.
+6. Register one UoE Companion using that tunnel. Upload [`assets/icon-chatgpt.png`](../assets/icon-chatgpt.png) in the optional icon field before creating the entry (256 x 256 PNG, under 10 KB). Install/connect it in ChatGPT, refresh its tools and complete the campus login when required.
 7. Test status and a bounded course query separately in Chat, local Work and cloud Work. See [acceptance](WORK_ACCEPTANCE.md) for current evidence.
 
 The logon task runs with ordinary user permissions and maintains the connection; it does not periodically crawl school pages. No inbound public listener is opened. `Stop-Work-Connection.ps1` stops the connection and preserves private data. Upgrade the backend while jobs are idle, keep the private data directory and reconnect the existing registered app.
 
 This remains a self-hosted deployment. Public-directory one-click installation, a hosted multi-user service and per-user campus onboarding within such a service are not implemented. Sharing the source or release does not share the author's private connection.
 
+## If the remote icon is missing
+
+Use `assets/icon-chatgpt.png` for the ChatGPT upload field. It is exported from the same original vector artwork as the full-size local icon. The 512-pixel `assets/icon.png` exceeds the creation form's 10 KB limit. A local plugin manifest or the MCP server's `icons` metadata does not establish that the remote listing has saved its own icon.
+
+Use the existing entry's icon editor if available. If it is unavailable, obtain explicit approval before connecting a replacement entry or removing the old one. Reuse the same private tunnel and backend, verify the saved image after a reload, run the read-only host checks, then remove the approved old entry and retain one UoE Companion. Do not delete the campus profile or reinstall the backend to fix listing artwork.
+
+A replacement has a new app identity. Existing conversations can retain the deleted app's tool mapping even after selecting the replacement tag. After retiring the old entry and setting the final name, validate a fresh ordinary Chat and fresh local/cloud Work tasks with the retained entry. Preserve failed legacy-task evidence; a successful call before deleting the old entry is not sufficient proof of the final identity. Update any optional private developer binding with a backup, without registering a second visible package.
+
 ## If tools are missing
 
 Check whether the intended registered app is installed **and connected**, then refresh its catalog. A local icon, a visible list of tool names, or a healthy tunnel alone is not proof that a particular conversation can call the tools. Retry once if ChatGPT explicitly reports authentication completed and asks for a retry. Request a new campus login only after a live school job reports `needs_login`.
+
+If the desktop reports **Could not use this project for a local chat** (Chinese: **无法将此项目用于本地聊天**) before starting a task, the host could not synchronise the selected ChatGPT project. First isolate plugin acceptance in a new local Work task from the home screen with no project selected. This does not repair project synchronisation; preserve the project and investigate its files/access separately. Do not erase the campus session or re-create the plugin in response to this host error.
 
 For acceptance, actually call `study_status` and `study_search(kind="course", limit=1)` in each mode. For current course access, run `study_live_courses` and wait for its job. Keep cached and live evidence separate. A local MCP protocol check or a Codex development task does not replace a local Work model turn.
 

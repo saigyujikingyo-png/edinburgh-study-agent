@@ -86,17 +86,20 @@ def test_installer_rejects_source_as_plugin_destination(tmp_path):
         install_runtime.install(tmp_path, tmp_path / "runtime", tmp_path)
 
 
-def test_public_icon_is_valid_and_metadata_is_rejected():
+@pytest.mark.parametrize("filename", ["assets/icon.png", "assets/icon-chatgpt.png"])
+def test_public_icon_is_valid_and_metadata_is_rejected(filename):
     import struct
     import zlib
     root=Path(__file__).resolve().parents[1]
-    data=(root/"assets/icon.png").read_bytes()
-    assert check_content("assets/icon.png",data)==[]
+    data=(root/filename).read_bytes()
+    assert check_content(filename,data)==[]
     payload=b"Comment\x00private fixture"
     chunk=struct.pack(">I",len(payload))+b"tEXt"+payload+struct.pack(">I",zlib.crc32(b"tEXt"+payload))
-    assert check_content("assets/icon.png",data[:-12]+chunk+data[-12:])
+    assert check_content(filename,data[:-12]+chunk+data[-12:])
     assert check_content("assets/other.png",data)
-    assert check_content("assets/icon.png",b"not an image")
+    assert check_content(filename,b"not an image")
+    other = "assets/icon-chatgpt.png" if filename == "assets/icon.png" else "assets/icon.png"
+    assert check_content(other,data)
 
 
 def test_public_svg_rejects_active_content():

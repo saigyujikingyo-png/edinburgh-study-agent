@@ -22,6 +22,10 @@ SCRIPT_FILES = {
     "Stop-Work-Connection.ps1",
 }
 SOURCE_ROOTS = {".codex-plugin", ".github", "src", "scripts", "tests", "docs", "skills", "assets"}
+ICON_PNG_PROFILES = {
+    "assets/icon.png": ((512, 512), 200000),
+    "assets/icon-chatgpt.png": ((256, 256), 10240),
+}
 PATTERNS = [
     ("personal Windows path", re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s\"']+", re.I)),
     ("personal Unix path", re.compile(r"/(?:Users|home)/[A-Za-z0-9_.-]+/")),
@@ -47,7 +51,7 @@ def allowed_path(name: str) -> bool:
         return False
     if name in TOP_FILES or name == ".codex-plugin/plugin.json":
         return True
-    if name in {"assets/icon.svg", "assets/icon.png"}:
+    if name == "assets/icon.svg" or name in ICON_PNG_PROFILES:
         return True
     if len(path.parts) < 2:
         return False
@@ -61,9 +65,9 @@ def allowed_path(name: str) -> bool:
             and path.suffix in {".yml", ".yaml"})
 
 
-def check_icon_png(data: bytes) -> bool:
+def check_icon_png(data: bytes, *, dimensions=(512, 512), max_bytes=200000) -> bool:
     """Allow only our small static icon; reject textual/private PNG metadata."""
-    if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data)>200000:
+    if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data)>max_bytes:
         return False
     position=8
     kinds=[]
@@ -77,7 +81,7 @@ def check_icon_png(data: bytes) -> bool:
         crc=struct.unpack_from(">I",data,end-4)[0]
         if kind not in {b"IHDR",b"IDAT",b"IEND",b"bKGD"} or zlib.crc32(kind+payload)!=crc:
             return False
-        if kind==b"IHDR" and (len(payload)!=13 or struct.unpack_from(">II",payload)!=(512,512)):
+        if kind==b"IHDR" and (len(payload)!=13 or struct.unpack_from(">II",payload)!=dimensions):
             return False
         kinds.append(kind)
         position=end
@@ -88,8 +92,10 @@ def check_icon_png(data: bytes) -> bool:
 def check_content(name: str, data: bytes) -> list[dict]:
     if not allowed_path(name):
         return [{"file": name, "reason": "file is outside the public allowlist"}]
-    if name == "assets/icon.png":
-        return [] if check_icon_png(data) else [{"file":name,"reason":"invalid or metadata-bearing icon PNG"}]
+    if name in ICON_PNG_PROFILES:
+        dimensions, max_bytes = ICON_PNG_PROFILES[name]
+        valid = check_icon_png(data, dimensions=dimensions, max_bytes=max_bytes)
+        return [] if valid else [{"file":name,"reason":"invalid or metadata-bearing icon PNG"}]
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
