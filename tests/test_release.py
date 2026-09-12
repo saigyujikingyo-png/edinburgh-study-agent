@@ -67,7 +67,13 @@ def test_installer_keeps_checkout_portable_and_ignores_stale_wheel(tmp_path, mon
     commands = []
     monkeypatch.setattr(install_runtime.shutil, "which", lambda _: None)
     monkeypatch.setattr(install_runtime, "run", lambda args: commands.append(args))
+    from edinburgh_study_agent.chatgpt import configure_installation
+    unbound = configure_installation(runtime.parent)
+    monkeypatch.setattr(install_runtime.subprocess, "run", lambda args, **kwargs:
+                        subprocess.CompletedProcess(args, 0, stdout=json.dumps(unbound)))
     result = install_runtime.install(package, runtime)
+    assert result["chatgpt_binding"]["acceptance"] == "configuration_only"
+    assert result["chatgpt_binding"]["cloud_installation"] == "not_checked"
     assert commands == [[python, "-m", "pip", "install", package.resolve()]]
     assert (package / ".mcp.json").read_text() == "portable marker"
     assert Path(result["mcp_config"]).is_relative_to(runtime.parent)
@@ -120,7 +126,33 @@ def test_installer_reapplies_saved_chatgpt_binding_to_private_plugin(tmp_path, m
         return subprocess.CompletedProcess(args, 0, stdout='{"binding_configured":true,"cloud_connection":"not_checked"}')
     monkeypatch.setattr(install_runtime.subprocess, "run", invoke)
     result = install_runtime.install(package, runtime, plugin)
-    assert commands[0][0] == [str(python), "-m", "edinburgh_study_agent.chatgpt", "bind",
+    assert commands[0][0] == [str(python), "-m", "edinburgh_study_agent.chatgpt", "configure",
                               "--home", str(runtime.parent), "--plugin-path", str(plugin)]
     assert result["chatgpt_binding"]["binding_configured"]
     assert result["chatgpt_binding"]["cloud_connection"] == "not_checked"
+
+
+def test_installer_binding_failure_preserves_both_runtime_configs(tmp_path, monkeypatch):
+    package = tmp_path / "source"
+    package.mkdir()
+    runtime = tmp_path / "private/runtime"
+    python = runtime / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    python.parent.mkdir(parents=True)
+    python.touch()
+    plugin = tmp_path / "plugins/edinburgh-study-agent"
+    (plugin / ".codex-plugin").mkdir(parents=True)
+    (plugin / ".codex-plugin/plugin.json").write_text("{}")
+    saved_config = runtime.parent / "mcp.json"
+    plugin_config = plugin / ".mcp.json"
+    saved_config.write_text("original private config")
+    plugin_config.write_text("original plugin config")
+    monkeypatch.setattr(install_runtime.shutil, "which", lambda _: None)
+    monkeypatch.setattr(install_runtime, "run", lambda _: None)
+    def fail_binding(args, **kwargs):
+        assert kwargs["shell"] is False
+        raise subprocess.CalledProcessError(2, args)
+    monkeypatch.setattr(install_runtime.subprocess, "run", fail_binding)
+    with pytest.raises(subprocess.CalledProcessError):
+        install_runtime.install(package, runtime, plugin, chatgpt_app_id="asdk_app_" + "a" * 32)
+    assert saved_config.read_text() == "original private config"
+    assert plugin_config.read_text() == "original plugin config"

@@ -34,6 +34,19 @@ def install(package: Path, runtime: Path, plugin: Path | None = None,
         run(installer + ["-r", package / "requirements.lock"])
     # Always install this checkout. A stale dist wheel must not shadow the source.
     run(installer + [package])
+    # The installed module owns one complete status contract for configured and
+    # unconfigured clients. Finish binding before touching either runtime config.
+    command = [str(python), "-m", "edinburgh_study_agent.chatgpt", "configure",
+               "--home", str(runtime.parent)]
+    if plugin is not None:
+        command += ["--plugin-path", str(plugin)]
+    if chatgpt_app_id:
+        command += ["--app-id", chatgpt_app_id]
+    # Trusted local installer arguments, a fixed native Python executable and
+    # module, no shell, and no webpage/MCP input. Shell-quoting each value would
+    # corrupt this argument vector; it is not a shell command string.
+    completed = subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8", shell=False)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit, python.lang.security.audit.dangerous-subprocess-use-tainted-env-args
+    chatgpt_binding = json.loads(completed.stdout)
     config = {"mcpServers": {"edinburgh-study": {
         "command": str(python), "args": ["-m", "edinburgh_study_agent.server"],
         "env": {"PYTHONUTF8": "1"}}}}
@@ -42,14 +55,6 @@ def install(package: Path, runtime: Path, plugin: Path | None = None,
     destination.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     if plugin is not None:
         (plugin / ".mcp.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-    chatgpt_binding = {"binding_configured": False, "cloud_connection": "not_checked"}
-    if plugin is not None and (chatgpt_app_id or (runtime.parent / "work/chatgpt.json").exists()):
-        command = [str(python), "-m", "edinburgh_study_agent.chatgpt", "bind",
-                   "--home", str(runtime.parent), "--plugin-path", str(plugin)]
-        if chatgpt_app_id:
-            command += ["--app-id", chatgpt_app_id]
-        completed = subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8")
-        chatgpt_binding = json.loads(completed.stdout)
     return {"python": str(python), "mcp_config": str(destination),
             "chatgpt_binding": chatgpt_binding,
             "plugin_config": str(plugin / ".mcp.json") if plugin else None,

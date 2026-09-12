@@ -58,11 +58,11 @@ def plugin_files(plugin):
     return plugin, manifest, app, document
 
 
-def inspect_binding(home, plugin=None):
+def inspect_binding(home, plugin=None, *, use_saved_plugin=True):
     path = binding_path(home)
     saved = load_object(path) if path.exists() else {}
     identity = app_identity(saved["app_id"]) if saved.get("app_id") else None
-    target = plugin or saved.get("plugin_path")
+    target = plugin or (saved.get("plugin_path") if use_saved_plugin else None)
     configured = False
     if target is not None:
         _, _, app, manifest = plugin_files(target)
@@ -135,9 +135,22 @@ def bind(home, plugin, app_id=None):
             "next_step": "Reinstall this private marketplace plugin to load its app dependency. Install AND connect the linked app in ChatGPT. Verify actual Chat and Work calls; this command cannot authenticate the cloud host."}
 
 
+def configure_installation(home, plugin=None, app_id=None):
+    """Reapply an explicit/saved identity, or return a full unconfigured status."""
+    if app_id and plugin is None:
+        raise ValueError("Supply a separate private plugin copy to bind ChatGPT.")
+    path = binding_path(home)
+    saved = load_object(path) if path.exists() else {}
+    if plugin is not None and (app_id or saved.get("app_id")):
+        return bind(home, plugin, app_id)
+    # An empty/unrelated settings object is unconfigured, not an invalid identity.
+    # Without an explicit plugin target do not follow a potentially stale path.
+    return inspect_binding(home, plugin, use_saved_plugin=False)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["bind", "check"])
+    parser.add_argument("action", choices=["bind", "check", "configure"])
     parser.add_argument("--home", type=Path, default=Path(os.environ.get("EDINBURGH_STUDY_HOME", Path.home() / ".edinburgh-study-agent")))
     parser.add_argument("--plugin-path", type=Path)
     parser.add_argument("--app-id", help="Your own registered private ChatGPT app ID; never a secret.")
@@ -147,6 +160,8 @@ def main():
             if args.plugin_path is None:
                 raise ValueError("Supply the separate private installed --plugin-path.")
             result = bind(args.home, args.plugin_path, args.app_id)
+        elif args.action == "configure":
+            result = configure_installation(args.home, args.plugin_path, args.app_id)
         else:
             result = inspect_binding(args.home, args.plugin_path)
     except (ValueError, OSError) as exc:

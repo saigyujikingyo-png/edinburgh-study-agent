@@ -78,3 +78,18 @@ def test_unbound_status_does_not_claim_cloud_or_login(installation):
 def test_public_package_rejects_personal_app_dependency():
     assert check_content(".app.json", json.dumps({"apps": {"uoe-companion": {"id": APP}}}).encode())
     assert check_content(".codex-plugin/plugin.json", b'{"apps":"./.app.json"}')
+
+
+def test_installer_empty_saved_settings_return_full_unconfigured_status(installation):
+    from edinburgh_study_agent.chatgpt import configure_installation
+    home, plugin = installation
+    settings = home / "work/chatgpt.json"
+    settings.parent.mkdir(parents=True)
+    settings.write_text("{}")
+    empty = configure_installation(home, plugin)
+    assert not empty["binding_configured"]
+    assert empty["cloud_installation"] == empty["campus_login"] == "not_checked"
+    assert not (plugin / ".app.json").exists()
+    configured = configure_installation(home, plugin, APP)
+    assert set(empty) <= set(configured)
+    assert configured["binding_configured"]

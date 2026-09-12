@@ -40,4 +40,4 @@ An optional real [DeepSeek bridge probe](scripts/verify_deepseek.py) uses the of
 See [host evidence levels](docs/HOSTS.md) and [language boundaries](docs/LANGUAGES.md). Private runtime backups, host configuration backups and campus receipts are excluded from releases.
 
 
-0.5.1 adds six regression cases for per-person ChatGPT binding, upgrade reapplication, conflict refusal, rollback, unknown-versus-verified connection state and public-package isolation. The full local suite has 113 tests. CI status must be checked for the exact release commit; it does not validate a real ChatGPT or campus account.
+0.5.1 adds eight regression cases for per-person ChatGPT binding, upgrade reapplication, conflict refusal, rollback, unknown-versus-verified connection state and public-package isolation. The full local suite has 115 tests. CI status must be checked for the exact release commit; it does not validate a real ChatGPT or campus account.
