@@ -7,7 +7,7 @@ from .models import LONDON, now_utc
 from .localization import presentation
 
 # Static SQL only. Dates, kinds, switches, limits and offsets are bound values.
-RECORDS = """
+WINDOW_SQL = """
 WITH records AS (
  SELECT id,kind,payload,source,observed_at,observation_id,0 AS local_only,
  json_extract(payload,'$.status') AS status,
@@ -30,10 +30,14 @@ WITH records AS (
  (kind!='event' AND julianday(due_at)>=julianday(?) AND julianday(due_at)<julianday(?)) OR
  (kind!='event' AND due_at IS NULL AND due_date>=? AND due_date<=?) OR
  (?=1 AND ((kind='event' AND starts_at IS NULL) OR (kind!='event' AND due_at IS NULL AND due_date IS NULL)))
- ))
+ )), stats AS (
+ SELECT COUNT(*) AS total,SUM(sort_at IS NULL) AS unknown FROM selected
+), page AS (
+ SELECT * FROM selected ORDER BY sort_at IS NULL,julianday(sort_at),kind,id LIMIT ? OFFSET ?
+)
+SELECT page.*,stats.total,stats.unknown FROM stats LEFT JOIN page ON 1=1
+ORDER BY page.sort_at IS NULL,julianday(page.sort_at),page.kind,page.id
 """
-COUNT_SQL = RECORDS + "SELECT COUNT(*) AS total,SUM(sort_at IS NULL) AS unknown FROM selected"
-PAGE_SQL = RECORDS + "SELECT * FROM selected ORDER BY sort_at IS NULL,julianday(sort_at),kind,id LIMIT ? OFFSET ?"
 
 def window(store, start, end, *, kind=None, include_tasks=False, include_unknown=False, limit=500, offset=0):
     first, last = date.fromisoformat(start), date.fromisoformat(end)
@@ -45,12 +49,13 @@ def window(store, start, end, *, kind=None, include_tasks=False, include_unknown
     upper = datetime.combine(last+timedelta(days=1),time(),LONDON).isoformat()
     params=(kind,kind,int(include_tasks),upper,lower,lower,lower,upper,start,end,int(include_unknown))
     with store.connection() as db:
-        # One read transaction keeps counts and pages consistent during concurrent capture.
-        db.execute("BEGIN")
-        counts=db.execute(COUNT_SQL,params).fetchone()
-        rows=db.execute(PAGE_SQL,(*params,limit,offset)).fetchall()
+        # One fixed statement shares a snapshot for counts and rows, including empty pages.
+        rows=db.execute(WINDOW_SQL,(*params,limit,offset)).fetchall()
+    counts=rows[0]
     items=[]
     for row in rows:
+        if row["id"] is None:
+            continue
         if row["local_only"]:
             item=json.loads(row["payload"])
             item.update(kind="task",source="local",due_at=row["due_at"],due_date=row["due_date"])
@@ -59,8 +64,8 @@ def window(store, start, end, *, kind=None, include_tasks=False, include_unknown
         items.append(item)
     total=counts["total"]
     return {"items":items,"total_matches":total,"unknown_dates":counts["unknown"] or 0,
-            "offset":offset,"next_offset":offset+len(rows) if offset+len(rows)<total else None,
-            "truncated":offset+len(rows)<total,"live":False,"coverage":"cached_observations_only"}
+            "offset":offset,"next_offset":offset+len(items) if offset+len(items)<total else None,
+            "truncated":offset+len(items)<total,"live":False,"coverage":"cached_observations_only"}
 
 def agenda(store, start=None, end=None, limit=20, offset=0, locale=None, display_timezone=None):
     first=date.fromisoformat(start) if start else now_utc().astimezone(LONDON).date()

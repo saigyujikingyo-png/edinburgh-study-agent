@@ -41,7 +41,7 @@ If the `claude` command is installed:
 claude mcp get uoe-companion
 ```
 
-This uses the official `claude mcp add-json --scope user` command. Alternatively, merge the generated `claude-code.json` entry into the selected project's `.mcp.json`; do not replace unrelated entries or hand-edit Claude Code's internal global storage. The CLI owns conflict handling.
+This uses the official `claude mcp add-json --scope user` command with a native executable. Windows `.cmd`/`.bat` launchers are refused because they require shell interpretation; use the generated JSON option in that case. Alternatively, merge the generated `claude-code.json` entry into the selected project's `.mcp.json`; do not replace unrelated entries or hand-edit Claude Code's internal global storage. The CLI owns conflict handling.
 
 Source: [Claude Code MCP documentation](https://code.claude.com/docs/en/mcp).
 

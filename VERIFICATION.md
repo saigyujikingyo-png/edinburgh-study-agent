@@ -29,7 +29,7 @@ CI runs these checks using synthetic data on Windows and Linux, Python 3.11 and 
 0.4.0 regression coverage includes database migration, Unicode and query-value isolation, cache integrity, assignment-file reuse, compact evidence provenance, pagination, bounded waiting and public icon validation.
 
 
-0.5.0 adds tests for concurrent per-field preference writes, catalog aliases and fallback, RTL metadata, timezone/DST boundaries, linked deadline updates, unknown/date-only agenda records, filtering before pagination/export/planning, host configuration preservation/backups/idempotency and the 28-tool student stdio profile. The full suite has 105 tests.
+0.5.0 adds tests for concurrent per-field preference writes, catalog aliases and fallback, RTL metadata, timezone/DST boundaries, linked deadline updates, unknown/date-only agenda records, filtering before pagination/export/planning, host configuration preservation/backups/idempotency and the 28-tool student stdio profile. The full suite has 107 tests.
 
 An optional real [DeepSeek bridge probe](scripts/verify_deepseek.py) uses the official published package (0.0.1-rc.1 on the acceptance host), its config resolver, MCP transport/discovery/execution, official schema validator and text renderer. The registration/lifecycle fixture and synthetic data do not constitute a full Harness/model turn. It exposed a real nullable-schema incompatibility, now fixed through a portable catalog while server input validation remains enforced.
 

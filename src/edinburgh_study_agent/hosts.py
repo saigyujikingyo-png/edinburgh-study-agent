@@ -91,6 +91,8 @@ def merge_config(path, config):
         raise ValueError("Host config must contain an object named mcpServers; it was not changed.")
     servers=document.setdefault("mcpServers",{})
     managed=[key for key,value in servers.items() if isinstance(value,dict) and value.get("args")==["-m",MODULE]]
+    if len(managed)>1:
+        raise ValueError("Multiple UoE entries exist. Consolidate them before installing to avoid duplicate tools.")
     name=managed[0] if len(managed)==1 else SERVER_NAME
     if name in servers and name not in managed:
         raise ValueError("This host already has an unrelated uoe-companion entry. Resolve the name conflict before installing.")
@@ -158,8 +160,12 @@ def main():
             executable=shutil.which("claude")
             if not executable:
                 raise ValueError("Claude Code CLI is not installed. Generate its JSON configuration and merge it into the desired project's .mcp.json.")
-            # Use the official CLI to preserve its user-scope storage conventions.
-            subprocess.run([executable,"mcp","add-json","--scope","user",SERVER_NAME,json.dumps(config)],check=True)
+            if Path(executable).suffix.lower() in (".cmd",".bat"):
+                raise ValueError("Use the native Claude executable or merge the generated project JSON. Windows batch launchers require a shell and are not executed by this installer.")
+            # Reviewed CLI-only boundary: trusted local executable, argument vector,
+            # no shell, and no webpage/MCP tool parameters. Quoting the JSON again
+            # would corrupt the actual argument; batch launchers are rejected above.
+            subprocess.run([executable,"mcp","add-json","--scope","user",SERVER_NAME,json.dumps(config)],check=True,shell=False)  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit, python.lang.security.audit.dangerous-subprocess-use-tainted-env-args
             value={"host":"claude-code","acceptance":"configuration_only","next_step":"Run claude mcp get uoe-companion, then use the tools in Claude Code."}
         else:
             if args.host not in ("claude-desktop","workbuddy"):

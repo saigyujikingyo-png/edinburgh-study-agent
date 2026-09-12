@@ -52,7 +52,7 @@ def result(value: dict, detail: str = "compact") -> CallToolResult:
 def study_status(include_capabilities: bool = False) -> CallToolResult:
     """Read cache freshness and previous authentication observations. Set include_capabilities for implemented, missing and unverified features."""
     value=store().status()
-    value["edition"]="student"
+    value["audience"]="students"
     value["tool_profile"]=TOOL_PROFILE
     value["preferences"]=localization.preferences(store())["preferences"]
     if include_capabilities:

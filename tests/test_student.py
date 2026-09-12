@@ -158,3 +158,29 @@ def test_portable_catalog_retains_runtime_validation(store,monkeypatch):
         portable_schema({"anyOf":[{"type":"number"},{"type":"integer"}]})
     with pytest.raises(ValueError):
         portable_schema({"$defs":{"x":{"$ref":"#/$defs/x"}},"$ref":"#/$defs/x"})
+
+
+def test_claude_cli_argument_boundary_and_batch_refusal(tmp_path,monkeypatch):
+    captured=[]
+    monkeypatch.setattr(hosts.shutil,"which",lambda name:str(tmp_path/"claude.exe"))
+    monkeypatch.setattr(hosts.subprocess,"run",lambda argv,**options:captured.append((argv,options)))
+    private=tmp_path/"spaces & shell metacharacters"
+    monkeypatch.setattr(sys,"argv",["hosts","install","--host","claude-code","--home",str(private)])
+    hosts.main()
+    argv,options=captured[0]
+    assert options["shell"] is False
+    assert json.loads(argv[-1])["env"]["EDINBURGH_STUDY_HOME"]==str(private.resolve())
+    assert argv[1:6]==["mcp","add-json","--scope","user","uoe-companion"]
+    monkeypatch.setattr(hosts.shutil,"which",lambda name:str(tmp_path/"claude.cmd"))
+    with pytest.raises(SystemExit):
+        hosts.main()
+    assert len(captured)==1
+
+def test_agenda_sql_inputs_and_empty_count_row(store):
+    empty=agenda.window(store,"2030-01-01","2030-01-07",include_unknown=True,offset=50)
+    assert empty["total_matches"]==0 and empty["items"]==[] and empty["next_offset"] is None
+    with pytest.raises(ValueError):
+        agenda.window(store,"2030-01-01' OR 1=1 --","2030-01-07")
+    with pytest.raises(ValueError):
+        agenda.window(store,"2030-01-01","2030-01-07",kind="event' OR 1=1 --")
+    assert store.status()["counts"]=={}

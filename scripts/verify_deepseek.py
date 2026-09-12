@@ -70,7 +70,7 @@ def main():
     parser.add_argument("--output",required=True,type=Path)
     args=parser.parse_args()
     node=shutil.which("node")
-    if not node:
+    if not node or Path(node).suffix.lower() in (".cmd",".bat"):
         parser.error("Node is required for this optional development probe.")
     package=json.loads((args.node_modules/"@deepseek-ai/dsh-mcp-client/package.json").read_text(encoding="utf-8"))
     with tempfile.TemporaryDirectory(prefix="uoe-probe-",dir=args.node_modules.parent) as temporary:
@@ -78,8 +78,10 @@ def main():
         (folder/"probe.mjs").write_text(PROBE,encoding="utf-8")
         config=host_document("deepseek-harness",server_config(args.python,folder/"campus"))
         (folder/"config.json").write_text(json.dumps(config),encoding="utf-8")
-        child=subprocess.run([node,str(folder/"probe.mjs"),str(folder/"config.json")],capture_output=True,text=True,
-                             encoding="utf-8",timeout=55,env={**os.environ,"PYTHONUTF8":"1"})
+        # Reviewed development-only boundary: native Node, a static probe script,
+        # generated local paths and an argument vector; never a shell command.
+        child=subprocess.run([node,str(folder/"probe.mjs"),str(folder/"config.json")],capture_output=True,text=True,shell=False,  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit, python.lang.security.audit.dangerous-subprocess-use-tainted-env-args
+                             encoding="utf-8",timeout=55,env={**os.environ,"PYTHONUTF8":"1"})  # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-audit, python.lang.security.audit.dangerous-subprocess-use-tainted-env-args
         if child.returncode:
             raise RuntimeError(child.stderr[-6000:])
         result=json.loads(child.stdout.strip().splitlines()[-1])
