@@ -19,7 +19,7 @@ async def run():
                 assert initialized.serverInfo.name=="UoE Companion"
                 assert initialized.serverInfo.icons[0].mimeType=="image/png"
                 tools = await session.list_tools()
-                assert len(tools.tools) == 28
+                assert len(tools.tools) == 31
                 state = await session.call_tool("study_status", {})
                 assert not state.isError and state.structuredContent["live_connection_checked"] is False
                 created = await session.call_tool("study_task_create",

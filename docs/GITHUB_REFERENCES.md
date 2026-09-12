@@ -24,3 +24,11 @@ These are future priorities. Version 0.4.0 still uses its dedicated Learn adapte
 
 
 0.4.0 also uses the [MCP icon metadata specification](https://modelcontextprotocol.io/specification/2025-11-25/basic) to expose the original UoE Companion icon. Display depends on host support. The public and installed Codex plugin manifests include the local PNG and SVG asset source.
+
+
+## Student multi-agent edition (0.5.0)
+
+- [DeepSeek AI Harness](https://github.com/deepseek-ai/deepseek-harness) and its official `@deepseek-ai/dsh-mcp-client`: configuration conventions, tool namespace and schema compatibility. The optional probe executes the published package in an isolated development directory; its code/dependencies are not bundled into UoE's release.
+- [MCP local-client guide](https://modelcontextprotocol.io/docs/2026-07-28/develop/connect-local-servers), [Claude Code](https://code.claude.com/docs/en/mcp), [WorkBuddy MCP guide](https://www.workbuddy.ai/docs/zh/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/MCP-Guide): primary configuration references, checked 2026-09-12.
+
+No university automation implementation, account data or third-party project source was copied into this release. Client compatibility is described at its actual verification level.

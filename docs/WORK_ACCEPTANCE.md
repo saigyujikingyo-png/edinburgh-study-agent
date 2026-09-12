@@ -40,3 +40,14 @@ Untested directory entries, third-party/LTI content, hidden course content, comp
 Downloads remain local; reading their text through MCP does not create a cloud attachment. Reboot/logoff recovery was not part of that acceptance.
 
 The detailed receipts remain under the participant's private acceptance directory and are not part of the public repository or release.
+
+
+## 0.5.0 student edition acceptance — 2026-09-12
+
+The existing private Work connection was upgraded and its catalog refreshed. A real Work turn identified 0.5.0/student edition; looked up the library in French and Arabic with the same stable service ID; read preferences without changing them; called the agenda with a French language override and Asia/Shanghai display timezone; refreshed Learn courses through the existing campus session; and reused a previously verified PDF with browser_started=false. The final explanation was in French. No screenshots, coordinate clicks, per-file Save As, new campus login, task creation or university submission was used.
+
+The actual agenda cache contained no structured events/deadlines/active tasks. Work correctly reported this as cached absence rather than an empty university schedule. Populated agenda ordering, timezone conversion, date-only/unknown dates and linked deadlines were verified with synthetic data and the official DeepSeek bridge fixture, not inferred from this empty live-account cache. This release does not add full structured Timetabler sync.
+
+The directory lookups were local catalog queries and did not verify library access. Learn refresh was live and completed through two visible pages. PDF reuse did not check remote freshness; fresh downloading remains the separate 0.4.0 acceptance above. Earlier school-service checks remain historical, not repeated all-site verification.
+
+Claude Desktop and WorkBuddy local configs were merged with backups; real model turns in those clients remain unverified. DeepSeek official-bridge tests are narrower than full Harness agent acceptance. See [host setup and evidence](HOSTS.md).

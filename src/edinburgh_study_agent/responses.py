@@ -4,7 +4,8 @@ from copy import deepcopy
 ITEM_FIELDS = {
     "id", "item_id", "native_id", "kind", "title", "url", "course_id",
     "source", "source_url", "course_title", "service_id", "status", "observed_at", "observation_id", "needs_refresh",
-    "due_at", "due_date", "starts_at", "ends_at", "excerpt",
+    "due_at", "due_date", "starts_at", "ends_at", "excerpt", "timing",
+    "display_due_at", "display_starts_at", "display_ends_at",
 }
 
 

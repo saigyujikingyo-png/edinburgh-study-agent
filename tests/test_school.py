@@ -82,11 +82,16 @@ def test_dispatch_does_not_pass_connection_credentials(tmp_path,monkeypatch):
         pid = 12345
     monkeypatch.setenv("CONTROL_PLANE_API_KEY","sentinel-private-key")
     monkeypatch.setenv("OPENAI_API_KEY","another-private-key")
+    for key in ("ANTHROPIC_API_KEY","DEEPSEEK_API_KEY","DSH_AUTH_TOKEN","AZURE_CLIENT_SECRET"):
+        monkeypatch.setenv(key,"synthetic-credential")
+    monkeypatch.setenv("UOE_LOCALE","fr")
     monkeypatch.setattr(school.subprocess,"Popen",lambda *a,**kw: launched.append((a,kw)) or Child())
     result = school.start_job(Store(tmp_path),"courses",{"query":"chemistry"})
     assert result["state"] == "queued" and "arguments" not in result
     assert "CONTROL_PLANE_API_KEY" not in launched[0][1]["env"]
     assert "OPENAI_API_KEY" not in launched[0][1]["env"]
+    assert all(key not in launched[0][1]["env"] for key in ("ANTHROPIC_API_KEY","DEEPSEEK_API_KEY","DSH_AUTH_TOKEN","AZURE_CLIENT_SECRET"))
+    assert launched[0][1]["env"]["UOE_LOCALE"]=="fr"
     assert launched[0][0][0][-1] == result["job_id"]
     assert result["source_content_is_untrusted"] is True
 

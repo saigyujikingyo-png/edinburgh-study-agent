@@ -176,7 +176,9 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
         python = python.with_name("pythonw.exe")
     environment = dict(os.environ, EDINBURGH_STUDY_HOME=str(store.root.resolve()), PYTHONUTF8="1")
     # Connection keys are unnecessary in the school browser process.
-    for key in ("CONTROL_PLANE_API_KEY","EDINBURGH_TUNNEL_KEY","OPENAI_API_KEY"):
+    for key in list(environment):
+        if not re.search(r"(?i)(api_?key|token|secret|password|credential|tunnel_key)", key):
+            continue
         environment.pop(key,None)
     flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS if os.name == "nt" else 0
     try:

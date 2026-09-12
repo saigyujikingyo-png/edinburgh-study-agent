@@ -4,7 +4,7 @@ from .models import clean_text, now_utc
 from .store import identifier
 from .services import directory
 
-def collect(store, item_id: str, collection: str = "收件箱", tags: list[str] | None = None,
+def collect(store, item_id: str, collection: str = "Inbox", tags: list[str] | None = None,
             notes: str = "", archived: bool = False) -> dict:
     item = store.item(item_id)
     collection = clean_text(collection.strip())
@@ -46,8 +46,8 @@ def home(store) -> dict:
         downloads=db.execute("SELECT COUNT(*) FROM downloads").fetchone()[0]
         grouped=[dict(r) for r in db.execute("SELECT source,kind,COUNT(*) count FROM items GROUP BY source,kind")]
     saved=collections(store,limit=10)
-    tasks=store.tasks("todo")["tasks"]
-    service_rows=[{k:s[k] for k in ("id","title","category","url","coverage","last_check")}
+    tasks=[t for t in store.tasks()["tasks"] if t["status"] in ("todo","doing")]
+    service_rows=[{k:s[k] for k in ("id","title","official_name","category","url","coverage","last_check")}
                   for s in directory(store)["services"]]
     return {"name":"UoE Companion","services":service_rows,"indexed_items":grouped,"download_count":downloads,
             "tasks":tasks[:10],"task_count":len(tasks),"tasks_truncated":len(tasks)>10,

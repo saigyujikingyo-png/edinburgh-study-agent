@@ -40,3 +40,12 @@
 开发环境额外安装 `tiktoken`，运行 `python scripts/benchmark.py --output benchmark.json`。它创建并清理隔离合成数据库，不读取私有数据。0.3.0 比较应在该版本独立检出上运行同一基准逻辑；使用相同 Python 与依赖，避免同时运行重负载任务。
 
 这些结果不包含校园网络、SSO、网页加载、Work 隧道、模型推理或聊天长度。实际 Work 功能验收单独记录在 [WORK_ACCEPTANCE.md](WORK_ACCEPTANCE.md)。
+
+
+## 0.5.0 student and multilingual edition
+
+Measured on the same acceptance computer, 2026-09-12. The 3,000-item synthetic benchmark still returns 7,241 o200k tokens for a 20-row search (text and structured MCP envelopes included). Search median was 10.352 ms; warm document reading 2.283 ms. These are local CPU/serialization measurements, not campus network or model billing measurements.
+
+The serialized 31-tool full catalog is 4,608 o200k tokens; the 28-tool student catalog is 3,681 (20.1% fewer). The student profile removes three legacy developer entrypoints; all student discovery/download workflows remain. Portable schemas remove repetitive field titles and express unsupported bounds as text while server validation remains active. Hosts may wrap or cache these descriptions differently.
+
+Date filtering now happens before agenda pagination, plan conflict checks and calendar export. Regression fixtures with 750 irrelevant resources and 600 old events verify that current-window planning/export still work. This is a correctness and bounded-response improvement, not a claimed campus latency speedup. Language catalogs are local and add no translation-service/model API requests. Guidance is requested through study_help instead of repeating it in every response.

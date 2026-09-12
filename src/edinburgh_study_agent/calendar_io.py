@@ -112,9 +112,10 @@ def export_calendar(store, start, end, filename="edinburgh-study.ics"):
     calendar.add("prodid", "-//UoE Companion//EN")
     calendar.add("version", "2.0")
     calendar.add("x-wr-calname", "Edinburgh study - observed deadlines and events")
-    items = store.list_items(limit=500)
+    from .agenda import window
+    items = window(store, start, end)
     if items["truncated"]:
-        raise ValueError("Export supports up to 500 cached items; narrow the stored dataset first.")
+        raise ValueError("Export supports up to 500 events/deadlines in this date range; choose a shorter range.")
     count = 0
     for item in items["items"]:
         if item["kind"] not in ("event", "assignment") or item["status"] == "cancelled":
@@ -124,7 +125,7 @@ def export_calendar(store, start, end, filename="edinburgh-study.ics"):
             continue
         timestamp = datetime.fromisoformat(value) if "T" in value else date.fromisoformat(value)
         point = as_time(timestamp)
-        if not first <= point < stop:
+        if not first <= point < stop and not (item["kind"] == "event" and item.get("ends_at") and first < datetime.fromisoformat(item["ends_at"]) and point < stop):
             continue
         event = icalendar.Event()
         event.add("uid", item["id"] + "@edinburgh-study-agent.local")

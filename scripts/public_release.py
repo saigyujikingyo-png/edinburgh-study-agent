@@ -16,7 +16,7 @@ TOP_FILES = {
     "CONTRIBUTING.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md",
 }
 SCRIPT_FILES = {
-    "install_runtime.py", "run_server.py", "smoke_mcp.py", "verify_runtime.py",
+    "install_runtime.py", "run_server.py", "smoke_mcp.py", "verify_runtime.py", "verify_deepseek.py",
     "package_plugin.py", "public_release.py", "benchmark.py", "Connect-Work.ps1",
     "Enable-Work-Connection.ps1", "Run-Work-Connection.ps1",
     "Stop-Work-Connection.ps1",

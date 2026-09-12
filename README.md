@@ -2,17 +2,17 @@
 
 # UoE Companion · 爱丁堡校园助手
 
-在 **ChatGPT Work** 中用自然语言集中查找学校资源、下载和阅读课件、整理事务。**Codex 用于开发，Work 用于日常使用和验收。** 独立开源项目，非爱丁堡大学官方产品。
+面向学生，在 **ChatGPT Work、Claude、WorkBuddy、DeepSeek Agent** 等通用智能体中，用自然语言集中查找学校资源、下载和阅读课件、整理学习日程。**Codex 用于开发，Work 是实际使用与验收环境之一。** 独立开源项目，非爱丁堡大学官方产品。
 
 Manage University of Edinburgh resources and personal workflows through natural language in ChatGPT Work or another MCP host. Each person uses their own campus account, local data and private connection.
 
-[下载 0.4.0](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.4.0) · [分享与安装](docs/SHARING.md) · [Work 连接](docs/WORK_SETUP.md) · [性能](docs/PERFORMANCE.md) · [验收范围](docs/WORK_ACCEPTANCE.md)
+[下载 0.5.0](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.5.0) · [多智能体接入 / Agent setup](docs/HOSTS.md) · [多语言 / Languages](docs/LANGUAGES.md) · [分享与安装](docs/SHARING.md) · [Work 连接](docs/WORK_SETUP.md) · [性能](docs/PERFORMANCE.md) · [验收范围](docs/WORK_ACCEPTANCE.md)
 
 ## 能做什么
 
 在插件专属窗口完成校园登录和 MFA 后，后续请求复用会话。查询和下载通过结构化 DOM 与直接 HTTP 完成，无截图、视觉点击、逐文件“另存为”。学校会话过期时仍须重新登录。
 
-| 功能 | 0.4.0 状态与边界 |
+| 功能 | 0.5.0 学生版状态与边界 |
 | --- | --- |
 | Learn 课程与资源 | 已实现课程分页、受支持文件夹内容发现、查找原始附件、批量下载和完整性校验 |
 | 读取文件 | 已实现 PDF、DOCX、PPTX、XLSX、TXT、CSV、Markdown 文本读取；可复用校验后的本地文件 |
@@ -20,6 +20,9 @@ Manage University of Edinburgh resources and personal workflows through natural 
 | Timetabler | 已实现显示页面读取；完整结构化课表同步尚未实现 |
 | 活动、实习和就业 | 已实现受支持官网页面和 MyCareerHub 链接的有限范围读取；不是全站检索 |
 | 集中管理 | 已实现带时间与来源的搜索、收藏、标签、本地待办和学习计划 |
+| 学习日程 | 新增统一课程事件、已知截止日期与未完成个人任务；保留未知日期、来源、分页和时区 |
+| 多语言 | 10 种服务目录语言、跨语言目录词匹配、持久偏好与临时覆盖；网页/课件说明由宿主智能体翻译，原文证据不变 |
+| 多智能体 | 标准 MCP；Claude、WorkBuddy 配置合并器，DeepSeek 官方桥适配与实际桥接测试；完整模型验收范围见接入文档 |
 | 日历 | 已实现本地 ICS 导入/导出；自动订阅、后台刷新和远程日历写入尚未实现 |
 | 更多学校入口 | 收录 17 项服务，各自报告访问时间和覆盖范围；目录入口不代表完整接入 |
 | 教师场景 | 可尝试本人有权限的资源读取与个人事务整理；教师专用 Learn、EUCLID 和管理后台尚未验收 |
@@ -35,7 +38,9 @@ Manage University of Edinburgh resources and personal workflows through natural 
 - “读我已下载的课件，整理本周学习任务。”
 - “查近期学校活动和实习信息，把这几个加入收藏。”
 - “从 EUCLID 核对正式课程，再查看本周课表。”
-- “告诉我哪些能力已实现，哪些老师功能还没验证。”
+- “显示本周学习日程，用上海时区展示具体时间，并保留学校原始截止日期。”
+- “Trouve la bibliothèque et présente mon agenda de la semaine.”
+- “以后用中文解释，保留英文课名和课程编号。”
 
 工具自动保存文件到本机。Work 可以通过插件读取文本；本机路径本身不是云端附件。结果会标明缓存或实时来源、时间、分页和未覆盖内容。
 
@@ -49,7 +54,7 @@ cd edinburgh-study-agent
 python scripts/install_runtime.py
 ```
 
-安装器创建 `~/.edinburgh-study-agent/runtime` 和私有 `mcp.json`，不会把凭据写进源码。其他本地 MCP 主机可以使用该配置；Work 用户继续按 [Work 连接指南](docs/WORK_SETUP.md) 建立自己的私有连接并登录学校。Work 的初次连接仍需要配置，不是通用一键安装服务。
+安装器创建 `~/.edinburgh-study-agent/runtime` 和私有 `mcp.json`，不会把凭据写进源码。本地用户按[多智能体接入指南](docs/HOSTS.md)生成或合并客户端配置；Work 用户继续按 [Work 连接指南](docs/WORK_SETUP.md) 建立自己的私有连接并登录学校。Work 的初次连接仍需要配置，不是通用一键安装服务。
 
 分享给同学或老师时发送本仓库或[发布页](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases)。每人独立安装、登录和连接；不要分享自己的浏览器资料、数据库、下载目录或私有 Work 连接。完整步骤见[分享说明](docs/SHARING.md)。
 
@@ -57,7 +62,7 @@ python scripts/install_runtime.py
 
 0.4.0 将筛选和分页下推到数据库，移除收藏查询中的逐条连接，缓存文档解析，并以精简响应、分页和最长 25 秒任务等待减少模型往返。每次读取仍校验文件 SHA-256；复用本地文件时明确不保证远端最新。
 
-保留全部 **28 个工具 ID**、Python 包名、数据目录和插件内部标识以兼容已有安装；界面名称和图标为 UoE Companion。基准数据及冷启动取舍见[性能报告](docs/PERFORMANCE.md)。
+0.5.0 保留原有 **28 个工具 ID**，新增日程、偏好和按需帮助，共 31 个。新客户端默认使用 28 个工具的学生集，隐藏三个旧开发工具；完整集继续兼容已有 Work 连接。参数目录兼容 DeepSeek 的较窄 schema 子集，服务端校验不变。Python 包名、私有数据目录和内部标识保持兼容。实测学生集工具描述比完整集少约 20% token；基准范围见[性能报告](docs/PERFORMANCE.md)。
 
 ## 开发与开源
 
