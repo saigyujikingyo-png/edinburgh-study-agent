@@ -25,3 +25,6 @@ artifacts/
 scripts/inspect_*.py
 scripts/diagnose_*.py
 scripts/download_live.py
+
+# Generated per-person ChatGPT app binding; never publish it.
+.app.json

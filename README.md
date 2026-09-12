@@ -2,11 +2,11 @@
 
 # UoE Companion · 爱丁堡校园助手
 
-面向学生，在 **ChatGPT Work、Claude、WorkBuddy、DeepSeek Agent** 等通用智能体中，用自然语言集中查找学校资源、下载和阅读课件、整理学习日程。**Codex 用于开发，Work 是实际使用与验收环境之一。** 独立开源项目，非爱丁堡大学官方产品。
+面向学生，在 **ChatGPT 聊天与云端 Work、Claude、WorkBuddy、DeepSeek Agent** 等通用智能体中，用自然语言集中查找学校资源、下载和阅读课件、整理学习日程。**Codex 用于开发，Work 是实际使用与验收环境之一。** 独立开源项目，非爱丁堡大学官方产品。
 
-Manage University of Edinburgh resources and personal workflows through natural language in ChatGPT Work or another MCP host. Each person uses their own campus account, local data and private connection.
+Manage University of Edinburgh resources and personal workflows through natural language in ChatGPT Chat, cloud Work or another MCP host. Each person uses their own campus account, local data and private connection.
 
-[下载 0.5.0](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.5.0) · [多智能体接入 / Agent setup](docs/HOSTS.md) · [多语言 / Languages](docs/LANGUAGES.md) · [分享与安装](docs/SHARING.md) · [Work 连接](docs/WORK_SETUP.md) · [性能](docs/PERFORMANCE.md) · [验收范围](docs/WORK_ACCEPTANCE.md)
+[下载 0.5.1](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.5.1) · [多智能体接入 / Agent setup](docs/HOSTS.md) · [多语言 / Languages](docs/LANGUAGES.md) · [分享与安装](docs/SHARING.md) · [聊天 / Work 连接](docs/WORK_SETUP.md) · [性能](docs/PERFORMANCE.md) · [验收范围](docs/WORK_ACCEPTANCE.md)
 
 ## 能做什么
 
@@ -53,6 +53,8 @@ git clone https://github.com/saigyujikingyo-png/edinburgh-study-agent.git
 cd edinburgh-study-agent
 python scripts/install_runtime.py
 ```
+
+聊天与云端 Work 使用同一个已安装且已连接的个人 ChatGPT 插件；本机插件的图标或安装状态不代表云端已连接。0.5.1 增加私人应用关联、升级保留和分层检查，详见[连接说明](docs/WORK_SETUP.md)。
 
 安装器创建 `~/.edinburgh-study-agent/runtime` 和私有 `mcp.json`，不会把凭据写进源码。本地用户按[多智能体接入指南](docs/HOSTS.md)生成或合并客户端配置；Work 用户继续按 [Work 连接指南](docs/WORK_SETUP.md) 建立自己的私有连接并登录学校。Work 的初次连接仍需要配置，不是通用一键安装服务。
 

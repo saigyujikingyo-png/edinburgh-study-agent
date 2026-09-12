@@ -118,6 +118,12 @@ def check_content(name: str, data: bytes) -> list[dict]:
                            "line": text[:match.start()].count("\n") + 1})
     if "\x00" in text:
         issues.append({"file": name, "reason": "binary content"})
+    if name == ".codex-plugin/plugin.json":
+        try:
+            if "apps" in json.loads(text):
+                issues.append({"file": name, "reason": "public package cannot declare a per-user ChatGPT app dependency"})
+        except (ValueError, TypeError):
+            issues.append({"file": name, "reason": "invalid public plugin manifest"})
     if name == ".mcp.json":
         expected = {"mcpServers": {"edinburgh-study": {
             "command": "python", "args": ["-m", "edinburgh_study_agent.server"],
