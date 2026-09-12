@@ -71,3 +71,8 @@ See [browser-guide.md](references/browser-guide.md) for routes and [capture-form
 ## Sharing and staff coverage
 
 Share the public source/install package, never a personal campus profile or private Work connection. Each person needs their own login and connection. This is not a hosted multi-user service. Teacher/staff-only Learn, EUCLID and administration pages remain unverified; grading, attendance, student administration and remote writes are not implemented. Describe the actual capability status rather than inferring staff support from student evidence.
+
+
+## Missing tools in Chat or cloud Work
+
+The visible plugin name/icon alone is not proof of a callable cloud connection. A personal local marketplace package uses local stdio; Chat and cloud Work need the user's registered app installed **and connected** in ChatGPT. Search the actual available tools before declaring them absent. If the host reports authentication accepted and asks to retry, retry the affected read once. Do not request a new campus login for a missing-tool or host-connection error. After reconnecting, verify actual `study_status` and bounded `study_search` results; local runtime status is insufficient. Installation details: `docs/WORK_SETUP.md`. Each person must bind their own app; never use another person's private connection.

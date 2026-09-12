@@ -18,9 +18,9 @@ On macOS/Linux the installed executable is `~/.edinburgh-study-agent/runtime/bin
 
 Use `--home` to select a separate private data directory, `--python` for an explicit installed Python executable, and `--locale fr-FR` for the initial language. Paths are passed as arguments, not shell expressions. Language and timezone preferences can later be managed in the agent.
 
-## ChatGPT Work
+## ChatGPT Chat and cloud Work
 
-Follow [Work setup](WORK_SETUP.md) to create your own private Secure MCP Tunnel. Work cannot reach an arbitrary local stdio process or a loopback URL on your computer. The computer must remain on, signed in and online. Existing Work users keep their connection and refresh its tool catalog after upgrading. No Work browser is required for campus operations.
+Follow [Work setup](WORK_SETUP.md) to create your own private Secure MCP Tunnel. Work cannot reach an arbitrary local stdio process or a loopback URL on your computer. The computer must remain on, signed in and online. Existing Chat/Work users keep their personal connection and refresh its tool catalog after upgrading. The app must be installed AND connected in ChatGPT. Bind the private local plugin with edinburgh_study_agent.chatgpt; check reports configuration only. No Work browser is required for campus operations.
 
 ## Claude Desktop
 
@@ -81,7 +81,7 @@ Ask in your preferred language, for example “Show my study agenda” or “显
 
 | Client | Evidence in 0.5.0 | Remaining boundary |
 | --- | --- | --- |
-| ChatGPT Work | Existing private connection upgraded; new catalog discovered; see the actual acceptance record | Only tested account/service scope is established |
+| ChatGPT Chat / cloud Work | 0.5.1: ordinary Chat status/search and cloud Work live Learn refresh passed separately; see the acceptance record | Only tested account/service scope is established |
 | Claude Desktop | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a Claude model turn have not been verified |
 | Claude Code | Portable entry and official-CLI installer implemented | CLI installation and model roundtrip not tested on the acceptance host |
 | WorkBuddy | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a WorkBuddy model turn have not been verified |

@@ -1,6 +1,10 @@
 # Verification
 
-## Campus and Work
+## Chat and cloud Work
+
+0.5.1 recovered a fresh cloud task that had no course tools despite a healthy local tunnel. Actual ordinary Chat status/search and cloud Work status/live Learn refresh both passed after installing and connecting the personal ChatGPT app and adding its private package dependency. See [versioned acceptance](docs/WORK_ACCEPTANCE.md) for the observed scope.
+
+## Historical campus and Work
 
 0.5.0 was subsequently accepted in an actual Work turn for French/Arabic catalog queries, unchanged preferences, cached agenda coverage/timezone metadata, fresh Learn course listing and verified local PDF reuse. See the versioned scope below; populated agenda time conversion is synthetic coverage, not an observation from the empty live-account calendar cache.
 
@@ -34,3 +38,6 @@ CI runs these checks using synthetic data on Windows and Linux, Python 3.11 and 
 An optional real [DeepSeek bridge probe](scripts/verify_deepseek.py) uses the official published package (0.0.1-rc.1 on the acceptance host), its config resolver, MCP transport/discovery/execution, official schema validator and text renderer. The registration/lifecycle fixture and synthetic data do not constitute a full Harness/model turn. It exposed a real nullable-schema incompatibility, now fixed through a portable catalog while server input validation remains enforced.
 
 See [host evidence levels](docs/HOSTS.md) and [language boundaries](docs/LANGUAGES.md). Private runtime backups, host configuration backups and campus receipts are excluded from releases.
+
+
+0.5.1 adds six regression cases for per-person ChatGPT binding, upgrade reapplication, conflict refusal, rollback, unknown-versus-verified connection state and public-package isolation. The full local suite has 113 tests. CI status must be checked for the exact release commit; it does not validate a real ChatGPT or campus account.

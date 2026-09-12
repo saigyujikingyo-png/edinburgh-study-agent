@@ -14,7 +14,7 @@ def run(args):
 
 
 def install(package: Path, runtime: Path, plugin: Path | None = None,
-            locked: bool = False) -> dict:
+            locked: bool = False, chatgpt_app_id: str | None = None) -> dict:
     package, runtime = package.resolve(), runtime.resolve()
     if plugin is not None:
         plugin = plugin.resolve()
@@ -22,6 +22,8 @@ def install(package: Path, runtime: Path, plugin: Path | None = None,
             raise ValueError("Use a separate extracted plugin path; the source config stays portable.")
         if not (plugin / ".codex-plugin/plugin.json").is_file():
             raise ValueError("Target must be an extracted UoE Companion plugin.")
+    if chatgpt_app_id and plugin is None:
+        raise ValueError("Supply a separate private --plugin-path to bind ChatGPT.")
     uv = shutil.which("uv")
     python = runtime / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     if not python.exists():
@@ -40,7 +42,16 @@ def install(package: Path, runtime: Path, plugin: Path | None = None,
     destination.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     if plugin is not None:
         (plugin / ".mcp.json").write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    chatgpt_binding = {"binding_configured": False, "cloud_connection": "not_checked"}
+    if plugin is not None and (chatgpt_app_id or (runtime.parent / "work/chatgpt.json").exists()):
+        command = [str(python), "-m", "edinburgh_study_agent.chatgpt", "bind",
+                   "--home", str(runtime.parent), "--plugin-path", str(plugin)]
+        if chatgpt_app_id:
+            command += ["--app-id", chatgpt_app_id]
+        completed = subprocess.run(command, check=True, capture_output=True, text=True, encoding="utf-8")
+        chatgpt_binding = json.loads(completed.stdout)
     return {"python": str(python), "mcp_config": str(destination),
+            "chatgpt_binding": chatgpt_binding,
             "plugin_config": str(plugin / ".mcp.json") if plugin else None,
             "host_configuration_changed": False, "source_config_changed": False}
 
@@ -49,11 +60,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--plugin-path", type=Path, help="Optional separate extracted plugin.")
     parser.add_argument("--runtime", type=Path, default=Path.home() / ".edinburgh-study-agent/runtime")
+    parser.add_argument("--chatgpt-app-id", help="Bind your own registered ChatGPT connection to the private plugin copy.")
     parser.add_argument("--locked", action="store_true", help="Use the recorded dependency snapshot.")
     args = parser.parse_args()
     try:
         result = install(Path(__file__).resolve().parents[1], args.runtime,
-                         args.plugin_path, args.locked)
+                         args.plugin_path, args.locked, args.chatgpt_app_id)
     except ValueError as exc:
         parser.error(str(exc))
     print(json.dumps(result))

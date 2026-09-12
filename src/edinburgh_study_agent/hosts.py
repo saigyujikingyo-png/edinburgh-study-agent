@@ -35,7 +35,9 @@ def host_document(host, config):
     if host == "chatgpt-work":
         return {"setup_guide":"https://github.com/saigyujikingyo-png/edinburgh-study-agent/blob/main/docs/WORK_SETUP.md",
                 "transport":"private Secure MCP Tunnel","uses_same_local_data":True,
-                "note":"Create your own Work connection on the computer running this runtime. A loopback URL cannot connect a cloud host."}
+                "surfaces":["ChatGPT Chat","ChatGPT cloud Work"],
+                "binding_check":"python -m edinburgh_study_agent.chatgpt check",
+                "note":"Install AND connect your own ChatGPT app, then bind the private local plugin to it. Both Chat and Work need actual model acceptance. A local icon or healthy tunnel does not prove the app is connected."}
     return {"mcpServers":{SERVER_NAME:config}}
 
 def atomic_json(path, document):

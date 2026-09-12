@@ -1,4 +1,21 @@
-# Work acceptance scope — UoE Companion 0.4.0
+# Chat and cloud Work acceptance — UoE Companion
+
+## 0.5.1 connection recovery — 2026-09-12
+
+A fresh cloud Work task failed to receive course tools. Its prompt referenced the local personal-marketplace package; the separate ChatGPT app was not installed/connected, even though the local runtime and tunnel were healthy. The installed public package declared stdio but no app dependency. Local runtime health did not detect this host-side failure.
+
+The personal ChatGPT app was installed and connected, its tool catalog refreshed, and a private app dependency was added to the locally installed package. The public package contains only the binding implementation and instructions, never the participant's connection.
+
+Fresh acceptance after installing 0.5.1:
+- **Cloud Work:** the original failed task reported actual version 0.5.1 and completed a new Learn course job with two-page coverage. The campus session was reused. Academic-year labels were separated from the All terms listing and were not presented as formal enrolment.
+- **Chat:** with the user's permission, a separate ordinary Chat conversation (the Chat radio was selected, not Work) called status and searched one cached course. It reported actual version 0.5.1 and cached-only coverage. The UI exposed the actual search request and response.
+- No screenshot, coordinate click, new campus login, file download, task write or school submission was used in this recovery acceptance. Downloads and other services retain their separate historical evidence below.
+
+Private receipts retain the actual task/turn identities and source time. Public source tests cover binding preservation, rollback, identity conflicts, missing configuration and preventing a private dependency from entering the published package. The binding check reports cloud/model status as not_checked: it is a configuration check, not a substitute for these real conversations.
+
+The result establishes this person's connected Windows deployment. Other people still need their own registered app and campus session. A universal hosted service and public-directory one-click installation are not implemented; the campus computer must remain online.
+
+## Historical Work acceptance — 0.4.0
 
 Live acceptance: 2026-09-12, through the participant's existing ChatGPT Work task and private connection. Codex developed and deployed the update. The existing local campus session was reused without another login.
 

@@ -97,3 +97,30 @@ def test_public_svg_rejects_active_content():
     root=Path(__file__).resolve().parents[1]
     assert check_content("assets/icon.svg",(root/"assets/icon.svg").read_bytes())==[]
     assert check_content("assets/icon.svg",b'<svg xmlns="http://www.w3.org/2000/svg"><script>bad</script></svg>')
+
+
+def test_installer_reapplies_saved_chatgpt_binding_to_private_plugin(tmp_path, monkeypatch):
+    package = tmp_path / "source"
+    package.mkdir()
+    runtime = tmp_path / "private/runtime"
+    python = runtime / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    python.parent.mkdir(parents=True)
+    python.touch()
+    settings = runtime.parent / "work/chatgpt.json"
+    settings.parent.mkdir()
+    settings.write_text("{}")
+    plugin = tmp_path / "plugins/edinburgh-study-agent"
+    (plugin / ".codex-plugin").mkdir(parents=True)
+    (plugin / ".codex-plugin/plugin.json").write_text("{}")
+    commands = []
+    monkeypatch.setattr(install_runtime.shutil, "which", lambda _: None)
+    monkeypatch.setattr(install_runtime, "run", lambda _: None)
+    def invoke(args, **kwargs):
+        commands.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, stdout='{"binding_configured":true,"cloud_connection":"not_checked"}')
+    monkeypatch.setattr(install_runtime.subprocess, "run", invoke)
+    result = install_runtime.install(package, runtime, plugin)
+    assert commands[0][0] == [str(python), "-m", "edinburgh_study_agent.chatgpt", "bind",
+                              "--home", str(runtime.parent), "--plugin-path", str(plugin)]
+    assert result["chatgpt_binding"]["binding_configured"]
+    assert result["chatgpt_binding"]["cloud_connection"] == "not_checked"
