@@ -1,0 +1,41 @@
+{
+  "name": "edinburgh-study-agent",
+  "version": "0.3.0",
+  "description": "School resources in ChatGPT Work: one local campus session, automatic Learn downloads, EUCLID, MyEd, careers/events, collections and tasks.",
+  "author": {
+    "name": "Edinburgh Study Agent contributors"
+  },
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "keywords": [
+    "edinburgh",
+    "myed",
+    "learn",
+    "study",
+    "courses",
+    "resources",
+    "mcp",
+    "work",
+    "euclid",
+    "careers",
+    "events"
+  ],
+  "interface": {
+    "displayName": "Edinburgh Study Agent",
+    "shortDescription": "在 Work 中统一查询课程、学籍、活动和实习，自动下载课件",
+    "longDescription": "复用插件专属校园登录，在 Work 中集中读取 MyEd、Learn、EUCLID、就业和活动等学校资源，收藏分类、管理待办并自动下载及读取课件。无需截图、坐标点击或逐文件保存；各服务分别注明实际访问范围。个人插件，非校方官方产品。",
+    "developerName": "Edinburgh Study Agent contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "刷新我的课程并下载课程手册和课件。",
+      "查学校活动和实习信息，把感兴趣的内容加入收藏。",
+      "从 EUCLID 核对我的正式课程，并整理本周待办。"
+    ],
+    "brandColor": "#17445C"
+  }
+}

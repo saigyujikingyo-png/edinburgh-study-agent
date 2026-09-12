@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "edinburgh-study": {
+      "command": "python",
+      "args": [
+        "-m",
+        "edinburgh_study_agent.server"
+      ],
+      "env": {
+        "PYTHONUTF8": "1"
+      }
+    }
+  }
+}
