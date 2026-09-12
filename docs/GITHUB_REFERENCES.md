@@ -20,4 +20,7 @@ BlackboardSync's source headers at the pinned revision specify GPL version 2 or 
 4. Add provider-specific vacancy and event extraction with explicit pagination and completeness.
 5. Consider a documented API integration only after verifying its actual access requirements and license compatibility.
 
-These are future priorities. Version 0.3.0 still uses its dedicated Learn adapter and bounded official-page readers; it does not automatically run periodic school syncs.
+These are future priorities. Version 0.4.0 still uses its dedicated Learn adapter and bounded official-page readers; it does not automatically run periodic school syncs.
+
+
+0.4.0 also uses the [MCP icon metadata specification](https://modelcontextprotocol.io/specification/2025-11-25/basic) to expose the original UoE Companion icon. Display depends on host support. The public and installed Codex plugin manifests include the local PNG and SVG asset source.

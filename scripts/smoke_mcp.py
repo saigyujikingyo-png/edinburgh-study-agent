@@ -15,7 +15,9 @@ async def run():
             args=[str(Path(__file__).with_name("run_server.py"))], env=env)
         async with stdio_client(params) as (read, write):
             async with ClientSession(read, write) as session:
-                await session.initialize()
+                initialized=await session.initialize()
+                assert initialized.serverInfo.name=="UoE Companion"
+                assert initialized.serverInfo.icons[0].mimeType=="image/png"
                 tools = await session.list_tools()
                 assert len(tools.tools) == 28
                 state = await session.call_tool("study_status", {})

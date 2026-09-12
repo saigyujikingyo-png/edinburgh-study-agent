@@ -21,7 +21,7 @@ from .store import Store, identifier
 from .models import now_utc, safe_url, Item, Observation, SOURCE_HOSTS
 from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, RESOURCE_LINKS, EXPANDERS,
                          COURSE_ID, course_items, resource_items, observation, learn_url)
-from .downloads import download_resource, list_downloads, safe_filename
+from .downloads import download_resource, list_downloads, safe_filename, verified_copy
 
 ACTIONS = {"login", "courses", "resources", "download", "myed", "service", "read_resource"}
 TERMINAL = {"complete", "partial", "needs_login", "failed", "cancelled"}
@@ -96,6 +96,39 @@ def read_job(store: Store, job_id: str) -> dict:
     return data
 
 
+def wait_job(store: Store,job_id: str,wait_seconds: float = 20,if_updated_at: str | None = None) -> dict:
+    if not 0<=wait_seconds<=25:
+        raise ValueError("wait_seconds must be 0..25.")
+    deadline=time.monotonic()+wait_seconds
+    value=read_job(store,job_id)
+    while value["state"] not in TERMINAL and time.monotonic()<deadline:
+        time.sleep(min(0.2,max(0,deadline-time.monotonic())))
+        value=read_job(store,job_id)
+    if if_updated_at and value["updated_at"]==if_updated_at and value["state"] not in TERMINAL:
+        return {k:value[k] for k in ("job_id","state","updated_at","poll_after_seconds")} | {"unchanged":True}
+    return value
+
+
+def cached_operation(store: Store,action: str,args: dict):
+    if args.get("refresh",action=="download"):
+        return None
+    if action=="download":
+        saved=[verified_copy(store,key) for key in dict.fromkeys(args["item_ids"])]
+        if all(saved):
+            return {"saved":saved,"failed":[],"complete":True,"live":False,
+                    "remote_freshness_checked":False}
+    if action=="read_resource":
+        item=store.item(args["item_id"])
+        if item["source"]!="learn" or item["kind"]!="resource":
+            return None
+        saved=verified_copy(store,item["id"])
+        if saved:
+            from .file_text import read_file
+            return {"live":False,"remote_freshness_checked":False,"download":saved,
+                    "content":read_file(store,item["id"],0,6000)}
+    return None
+
+
 def session_status(store: Store) -> dict:
     path = school_root(store) / "session.json"
     previous = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
@@ -117,6 +150,14 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
     if action not in ACTIONS:
         raise ValueError("Unsupported school action.")
     arguments = arguments or {}
+    cached=cached_operation(store,action,arguments)
+    if cached is not None:
+        key=uuid.uuid4().hex
+        stamp=now_utc().isoformat()
+        write_json(job_path(store,key),{"job_id":key,"action":action,"state":"complete",
+            "created_at":stamp,"updated_at":stamp,"progress":"Verified local copy ready.",
+            "result":cached,"browser_started":False})
+        return read_job(store,key)
     active = session_status(store)["active_jobs"]
     if action == "login":
         prior = next((j for j in active if j["action"] == "login"), None)
@@ -336,8 +377,8 @@ def list_courses(store: Store, page, args: dict, progress) -> dict:
         filter_name[:150] + "; traversed " + str(pages) + " course-list page(s)",complete)
     receipt = store.capture(obs)
     wanted = args.get("query","").casefold()
-    results = [store.item(identifier("learn","course",i.native_id)) for i in items
-               if not wanted or wanted in i.title.casefold()]
+    results = store.items_by_ids(identifier("learn","course",i.native_id) for i in items
+               if not wanted or wanted in i.title.casefold())
     mark_session(store,True)
     return {"live":True,"items":results,"observed_at":obs.observed_at.isoformat(),
             "coverage":obs.coverage,"pages":pages,"observation_id":receipt["observation_id"]}
@@ -432,8 +473,8 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
         course_id=course["native_id"],course_title=course["title"],excerpt=course["title"],status="available")
     store.capture(observation(page.url,course["title"],[course_item],"Observed open course outline"))
     wanted = args.get("query","").casefold()
-    results = [store.item(identifier("learn",i.kind,i.native_id)) for i in items
-               if not wanted or wanted in i.title.casefold()]
+    results = store.items_by_ids(identifier("learn",i.kind,i.native_id) for i in items
+               if not wanted or wanted in i.title.casefold())
     mark_session(store,True)
     return {"live":True,"items":results,"coverage":"partial","observed_at":obs.observed_at.isoformat(),
             "expanded_folders":len(expanded),"folders_not_opened":failures,
@@ -485,6 +526,10 @@ def download_items(store: Store, page, args: dict, progress) -> dict:
             continue
         progress("Downloading " + str(index) + "/" + str(len(ids)) + ": " + item["title"][:100])
         try:
+            cached=verified_copy(store,item_id) if not args.get("refresh",True) else None
+            if cached:
+                saved.append(cached)
+                continue
             url,filename = original_file(page,item)
             result = download_resource(store,item_id,url,filename,
                                        bool(args.get("refresh",True)),100)
@@ -509,8 +554,8 @@ def read_resource(store: Store,page,args,progress):
     if "/file/" in urlsplit(item.get("url") or "").path:
         from .file_text import read_file
         url,filename=original_file(page,item)
-        saved=download_resource(store,item["id"],url,filename,False,100)
-        return {"live":True,"download":saved,"content":read_file(store,item["id"],0,12000)}
+        saved=download_resource(store,item["id"],url,filename,args.get("refresh",False),100)
+        return {"live":True,"download":saved,"content":read_file(store,item["id"],0,6000)}
     goto_learn(page,learn_url(item["url"],item["course_id"]))
     from .portal import wait_page
     wait_page(page)
@@ -539,7 +584,7 @@ def execute_job(store: Store, job_id: str):
         action, args = record["action"], record["arguments"]
         progress("Waiting for the private school browser.")
         with browser_context(store,interactive=action == "login") as context:
-            page = context.new_page()
+            page = context.pages[0] if context.pages else context.new_page()
             if action == "login":
                 page.goto(LEARN_HOME,wait_until="domcontentloaded")
                 progress("Complete the campus sign-in and MFA in the dedicated Chrome window. It closes after verification.",

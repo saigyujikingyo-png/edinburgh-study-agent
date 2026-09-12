@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="UoE Companion: an open book and connected campus">
+  <rect width="512" height="512" rx="112" fill="#123A43"/>
+  <path d="M256 354C219 319 174 307 112 312V166C175 160 219 176 256 213C293 176 337 160 400 166V312C338 307 293 319 256 354Z" fill="#F5F2E9"/>
+  <path d="M256 217V353" fill="none" stroke="#123A43" stroke-width="14" stroke-linecap="round"/>
+  <path d="M145 220C179 220 205 229 223 245M145 263C176 263 200 270 217 281" fill="none" stroke="#7BA9A3" stroke-width="12" stroke-linecap="round"/>
+  <path d="M292 254L345 224V137" fill="none" stroke="#123A43" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="345" cy="134" r="25" fill="#EDB886"/>
+  <path d="M147 355C212 372 230 389 256 401C282 389 300 372 365 355" fill="none" stroke="#7BA9A3" stroke-width="14" stroke-linecap="round"/>
+</svg>

@@ -78,3 +78,22 @@ def test_installer_keeps_checkout_portable_and_ignores_stale_wheel(tmp_path, mon
 def test_installer_rejects_source_as_plugin_destination(tmp_path):
     with pytest.raises(ValueError, match="separate"):
         install_runtime.install(tmp_path, tmp_path / "runtime", tmp_path)
+
+
+def test_public_icon_is_valid_and_metadata_is_rejected():
+    import struct
+    import zlib
+    root=Path(__file__).resolve().parents[1]
+    data=(root/"assets/icon.png").read_bytes()
+    assert check_content("assets/icon.png",data)==[]
+    payload=b"Comment\x00private fixture"
+    chunk=struct.pack(">I",len(payload))+b"tEXt"+payload+struct.pack(">I",zlib.crc32(b"tEXt"+payload))
+    assert check_content("assets/icon.png",data[:-12]+chunk+data[-12:])
+    assert check_content("assets/other.png",data)
+    assert check_content("assets/icon.png",b"not an image")
+
+
+def test_public_svg_rejects_active_content():
+    root=Path(__file__).resolve().parents[1]
+    assert check_content("assets/icon.svg",(root/"assets/icon.svg").read_bytes())==[]
+    assert check_content("assets/icon.svg",b'<svg xmlns="http://www.w3.org/2000/svg"><script>bad</script></svg>')

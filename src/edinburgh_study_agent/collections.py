@@ -19,23 +19,39 @@ def collect(store, item_id: str, collection: str = "收件箱", tags: list[str] 
         store.audit(db,"collect_item",key)
     return {"collection_entry":record,"item":item,"university_record_changed":False}
 
-def collections(store, query: str = "", collection: str | None = None, include_archived: bool = False) -> dict:
+def collections(store, query: str = "", collection: str | None = None,
+                include_archived: bool = False, limit: int = 50, offset: int = 0) -> dict:
+    if not 1<=limit<=200 or not 0<=offset<=1000000:
+        raise ValueError("limit 1..200; offset 0..1000000.")
     with store.connection() as db:
-        records=[json.loads(r["payload"]) for r in db.execute("SELECT payload FROM collections ORDER BY rowid DESC")]
+        rows=db.execute("SELECT i.*,c.payload AS collection_payload FROM collections c "
+                        "JOIN items i ON i.id=c.item_id ORDER BY c.rowid DESC").fetchall()
     result=[]
-    for record in records:
-        if (record["archived"] and not include_archived) or (collection is not None and record["collection"] != collection):
+    for row in rows:
+        record=json.loads(row["collection_payload"])
+        if (record["archived"] and not include_archived) or (collection is not None and record["collection"]!=collection):
             continue
-        item=store.item(record["item_id"])
+        item=store._row(row)
         if query and query.casefold() not in json.dumps([record,item],ensure_ascii=False).casefold():
             continue
         result.append({**record,"item":item})
-    return {"entries":result[:200],"total_matches":len(result),"truncated":len(result)>200,"local_only":True}
+    entries=result[offset:offset+limit]
+    return {"entries":entries,"total_matches":len(result),"truncated":offset+len(entries)<len(result),
+            "offset":offset,"next_offset":offset+len(entries) if offset+len(entries)<len(result) else None,
+            "local_only":True}
+
 
 def home(store) -> dict:
     with store.connection() as db:
         downloads=db.execute("SELECT COUNT(*) FROM downloads").fetchone()[0]
         grouped=[dict(r) for r in db.execute("SELECT source,kind,COUNT(*) count FROM items GROUP BY source,kind")]
-    return {"services":directory(store)["services"],"indexed_items":grouped,"download_count":downloads,
-            "tasks":store.tasks("todo")["tasks"][:50],"collections":collections(store)["entries"][:30],
-            "live":False,"note":"This is your local school hub. Refresh a service for current information."}
+    saved=collections(store,limit=10)
+    tasks=store.tasks("todo")["tasks"]
+    service_rows=[{k:s[k] for k in ("id","title","category","url","coverage","last_check")}
+                  for s in directory(store)["services"]]
+    return {"name":"UoE Companion","services":service_rows,"indexed_items":grouped,"download_count":downloads,
+            "tasks":tasks[:10],"task_count":len(tasks),"tasks_truncated":len(tasks)>10,
+            "collections":saved["entries"],"collection_count":saved["total_matches"],
+            "collections_truncated":saved["truncated"],"live":False,
+            "next_tools":{"tasks":"study_tasks","collections":"study_collections","source":"study_evidence"},
+            "note":"Cached school hub; refresh a service for current information."}

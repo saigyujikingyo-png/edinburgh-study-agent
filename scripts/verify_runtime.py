@@ -44,7 +44,13 @@ async def main():
                 route = await session.call_tool("study_route", {"item_id": first["id"]})
                 assert route.structuredContent["url"].startswith("https://")
                 evidence = await session.call_tool("study_evidence", {"observation_id": first["observation_id"]})
-                assert first["excerpt"] in evidence.structuredContent["observation"]["text"]
+                pages = [evidence.structuredContent["observation"]["text"]]
+                while first.get("excerpt",first["title"]) not in "".join(pages) and evidence.structuredContent.get("has_more"):
+                    evidence = await session.call_tool("study_evidence", {"observation_id": first["observation_id"],
+                        "offset": evidence.structuredContent["next_offset"]})
+                    assert not evidence.isError
+                    pages.append(evidence.structuredContent["observation"]["text"])
+                assert first.get("excerpt",first["title"]) in "".join(pages)
                 report["resource_route_and_evidence_verified"] = True
             report["status"] = (await session.call_tool("study_status", {})).structuredContent
     async with stdio_client(params) as (read, write):

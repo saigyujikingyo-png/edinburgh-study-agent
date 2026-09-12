@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 from .models import Observation, clean_text, normal, now_utc, aware
+from . import __version__
 
 def identifier(source: str, kind: str, native_id: str) -> str:
     return hashlib.sha256(f"{source}\0{kind}\0{native_id}".encode()).hexdigest()[:24]
@@ -20,6 +21,7 @@ class Store:
         self.root.mkdir(parents=True, exist_ok=True)
         self.db_path = self.root / "study.sqlite3"
         with self.connection() as db:
+            db.execute("PRAGMA journal_mode=WAL")
             db.executescript("""
                 CREATE TABLE IF NOT EXISTS observations (
                   id TEXT PRIMARY KEY, source TEXT NOT NULL, scope TEXT NOT NULL,
@@ -39,16 +41,23 @@ class Store:
                   id TEXT PRIMARY KEY, item_id TEXT NOT NULL, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS tasks (
                   id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS observations_source_time ON observations(source, julianday(observed_at) DESC);
+                CREATE INDEX IF NOT EXISTS items_recent ON items(observed_at DESC, id);
                 CREATE TABLE IF NOT EXISTS audit (
                   seq INTEGER PRIMARY KEY, at TEXT NOT NULL, action TEXT NOT NULL,
                   object_id TEXT NOT NULL);
             """)
+            columns={r["name"] for r in db.execute("PRAGMA table_info(items)")}
+            if "search_text" not in columns:
+                db.execute("ALTER TABLE items ADD COLUMN search_text TEXT NOT NULL DEFAULT ''")
+                rows=db.execute("SELECT id,payload FROM items").fetchall()
+                db.executemany("UPDATE items SET search_text=? WHERE id=?",
+                               ((normal(r["payload"]),r["id"]) for r in rows))
 
     @contextmanager
     def connection(self):
         db = sqlite3.connect(self.db_path, timeout=20)
         db.row_factory = sqlite3.Row
-        db.execute("PRAGMA journal_mode=WAL")
         try:
             with db:
                 yield db
@@ -77,12 +86,12 @@ class Store:
                 if previous and datetime.fromisoformat(previous["observed_at"]) > observation.observed_at:
                     older.append(key)
                     continue
-                db.execute("""INSERT INTO items VALUES(?,?,?,?,?,?,?,?,?)
+                db.execute("""INSERT INTO items(id,source,kind,native_id,course_id,title,observed_at,observation_id,payload,search_text) VALUES(?,?,?,?,?,?,?,?,?,?)
                     ON CONFLICT(id) DO UPDATE SET course_id=excluded.course_id,
                     title=excluded.title, observed_at=excluded.observed_at,
-                    observation_id=excluded.observation_id, payload=excluded.payload""",
+                    observation_id=excluded.observation_id, payload=excluded.payload, search_text=excluded.search_text""",
                     (key, observation.source, item.kind, item.native_id, item.course_id, item.title,
-                     observation.observed_at.isoformat(), obs_id, item.model_dump_json()))
+                     observation.observed_at.isoformat(), obs_id, item.model_dump_json(), normal(item.model_dump_json())))
                 (updated if previous else inserted).append(key)
             self.audit(db, "capture", obs_id)
         return {"observation_id": obs_id, "duplicate": False, "inserted": inserted,
@@ -99,9 +108,9 @@ class Store:
         item["needs_refresh"] = age > 86400
         return item
 
-    def list_items(self, kind=None, course_id=None, query="", limit=100) -> dict:
-        if not 1 <= limit <= 500:
-            raise ValueError("limit must be 1..500.")
+    def list_items(self, kind=None, course_id=None, query="", limit=100, offset=0) -> dict:
+        if not 1 <= limit <= 500 or not 0 <= offset <= 1000000:
+            raise ValueError("limit must be 1..500; offset 0..1000000.")
         clauses, params = [], []
         if kind:
             clauses.append("kind=?")
@@ -109,14 +118,32 @@ class Store:
         if course_id:
             clauses.append("course_id=?")
             params.append(course_id)
-        sql = "SELECT * FROM items" + (" WHERE " + " AND ".join(clauses) if clauses else "")
+        needle=normal(query)
+        if needle:
+            clauses.append("instr(search_text,?)>0")
+            params.append(needle)
+        where=(" WHERE "+" AND ".join(clauses)) if clauses else ""
         with self.connection() as db:
-            rows = db.execute(sql + " ORDER BY observed_at DESC", params).fetchall()
-        needle = normal(query)
-        matches = [self._row(r) for r in rows if not needle or needle in normal(r["payload"])]
-        return {"items": matches[:limit], "total_matches": len(matches), "truncated": len(matches) > limit,
-                "live": False, "coverage": "cached_observations_only",
-                "note": "No matches means not observed in this cache, not absent from the University."}
+            total=db.execute("SELECT COUNT(*) FROM items"+where,params).fetchone()[0]
+            rows=db.execute("SELECT * FROM items"+where+" ORDER BY observed_at DESC,id LIMIT ? OFFSET ?",
+                            [*params,limit,offset]).fetchall()
+        return {"items":[self._row(r) for r in rows],"total_matches":total,
+                "truncated":offset+len(rows)<total,"offset":offset,
+                "next_offset":offset+len(rows) if offset+len(rows)<total else None,
+                "live":False,"coverage":"cached_observations_only",
+                "note":"No matches means not observed in this cache, not absent from the University."}
+
+    def items_by_ids(self, keys) -> list[dict]:
+        keys=list(keys)
+        found={}
+        with self.connection() as db:
+            for index in range(0,len(keys),400):
+                batch=keys[index:index+400]
+                rows=db.execute("SELECT * FROM items WHERE id IN ("+",".join("?" for _ in batch)+")",batch)
+                found.update((row["id"],self._row(row)) for row in rows)
+        if any(key not in found for key in keys):
+            raise ValueError("Unknown item_id. Refresh the source.")
+        return [found[key] for key in keys]
 
     def item(self, key) -> dict:
         with self.connection() as db:
@@ -132,19 +159,24 @@ class Store:
             raise ValueError("Unknown observation_id.")
         return {"observation": json.loads(row["payload"]), "content_is_untrusted": True}
 
+    def latest_observations(self) -> dict:
+        latest={}
+        with self.connection() as db:
+            sources=[r[0] for r in db.execute("SELECT DISTINCT source FROM observations")]
+            for source in sources:
+                row=db.execute("SELECT payload FROM observations WHERE source=? "
+                               "ORDER BY julianday(observed_at) DESC,rowid DESC LIMIT 1",(source,)).fetchone()
+                obs=json.loads(row["payload"])
+                latest[source]={k:obs[k] for k in
+                    ("source_url","observed_at","scope","coverage","authentication")}
+        return latest
+
     def status(self) -> dict:
         with self.connection() as db:
-            counts = {r["kind"]: r["n"] for r in db.execute("SELECT kind,COUNT(*) n FROM items GROUP BY kind")}
-            observations = [json.loads(r["payload"]) for r in
-                            db.execute("SELECT payload FROM observations ORDER BY observed_at DESC")]
-            task_count = db.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
-        latest = {}
-        for obs in observations:
-            source = obs["source"]
-            if source not in latest or datetime.fromisoformat(obs["observed_at"]) > datetime.fromisoformat(latest[source]["observed_at"]):
-                latest[source] = {k: obs[k] for k in
-                                  ("source_url", "observed_at", "scope", "coverage", "authentication")}
-        return {"version": "0.3.0", "transport": "stdio", "browser": "plugin_owned_persistent_campus_session",
+            counts={r["kind"]:r["n"] for r in db.execute("SELECT kind,COUNT(*) n FROM items GROUP BY kind")}
+            task_count=db.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+        latest=self.latest_observations()
+        return {"version": __version__, "name": "UoE Companion", "transport": "stdio", "browser": "plugin_owned_persistent_campus_session",
                 "data_directory": str(self.root), "counts": counts, "tasks": task_count,
                 "last_observations": latest, "live_connection_checked": False,
                 "capabilities": ["plugin-owned live DOM course/resource discovery", "evidence cache", "local tasks",

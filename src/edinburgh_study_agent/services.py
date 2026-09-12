@@ -57,7 +57,7 @@ def service(service_id: str) -> dict:
 def directory(store, query: str = "") -> dict:
     with store.connection() as db:
         checks = {r["service_id"]:json.loads(r["payload"]) for r in db.execute("SELECT * FROM service_checks")}
-    latest=store.status()["last_observations"]
+    latest=store.latest_observations()
     for source in ("learn","myed"):
         if source not in checks and source in latest:
             checks[source]=latest[source]

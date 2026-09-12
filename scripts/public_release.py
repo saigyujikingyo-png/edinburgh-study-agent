@@ -5,6 +5,9 @@ import argparse
 import json
 import re
 import subprocess
+import struct
+import zlib
+import xml.etree.ElementTree as ET
 from pathlib import Path, PurePosixPath
 
 TOP_FILES = {
@@ -14,11 +17,11 @@ TOP_FILES = {
 }
 SCRIPT_FILES = {
     "install_runtime.py", "run_server.py", "smoke_mcp.py", "verify_runtime.py",
-    "package_plugin.py", "public_release.py", "Connect-Work.ps1",
+    "package_plugin.py", "public_release.py", "benchmark.py", "Connect-Work.ps1",
     "Enable-Work-Connection.ps1", "Run-Work-Connection.ps1",
     "Stop-Work-Connection.ps1",
 }
-SOURCE_ROOTS = {".codex-plugin", ".github", "src", "scripts", "tests", "docs", "skills"}
+SOURCE_ROOTS = {".codex-plugin", ".github", "src", "scripts", "tests", "docs", "skills", "assets"}
 PATTERNS = [
     ("personal Windows path", re.compile(r"[A-Za-z]:[\\/]+Users[\\/]+[^\\/\s\"']+", re.I)),
     ("personal Unix path", re.compile(r"/(?:Users|home)/[A-Za-z0-9_.-]+/")),
@@ -44,6 +47,8 @@ def allowed_path(name: str) -> bool:
         return False
     if name in TOP_FILES or name == ".codex-plugin/plugin.json":
         return True
+    if name in {"assets/icon.svg", "assets/icon.png"}:
+        return True
     if len(path.parts) < 2:
         return False
     if path.parts[0] == "scripts":
@@ -56,14 +61,56 @@ def allowed_path(name: str) -> bool:
             and path.suffix in {".yml", ".yaml"})
 
 
+def check_icon_png(data: bytes) -> bool:
+    """Allow only our small static icon; reject textual/private PNG metadata."""
+    if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data)>200000:
+        return False
+    position=8
+    kinds=[]
+    while position+12<=len(data):
+        size=struct.unpack_from(">I",data,position)[0]
+        end=position+12+size
+        if end>len(data):
+            return False
+        kind=data[position+4:position+8]
+        payload=data[position+8:end-4]
+        crc=struct.unpack_from(">I",data,end-4)[0]
+        if kind not in {b"IHDR",b"IDAT",b"IEND",b"bKGD"} or zlib.crc32(kind+payload)!=crc:
+            return False
+        if kind==b"IHDR" and (len(payload)!=13 or struct.unpack_from(">II",payload)!=(512,512)):
+            return False
+        kinds.append(kind)
+        position=end
+    return (position==len(data) and kinds[:1]==[b"IHDR"] and kinds[-1:]==[b"IEND"]
+            and kinds.count(b"IHDR")==1 and kinds.count(b"IEND")==1 and b"IDAT" in kinds)
+
+
 def check_content(name: str, data: bytes) -> list[dict]:
     if not allowed_path(name):
         return [{"file": name, "reason": "file is outside the public allowlist"}]
+    if name == "assets/icon.png":
+        return [] if check_icon_png(data) else [{"file":name,"reason":"invalid or metadata-bearing icon PNG"}]
     try:
         text = data.decode("utf-8")
     except UnicodeDecodeError:
         return [{"file": name, "reason": "non-UTF-8 release input"}]
     issues = []
+    if name == "assets/icon.svg":
+        try:
+            if "<!" in text:
+                raise ValueError("SVG declarations are not supported")
+            icon=ET.fromstring(text)
+            permitted={"svg","rect","path","circle","ellipse","line","polyline","polygon","g","title","desc"}
+            if icon.tag!="{http://www.w3.org/2000/svg}svg":
+                raise ValueError("Expected SVG root")
+            for node in icon.iter():
+                if node.tag.split("}")[-1] not in permitted:
+                    raise ValueError("Unexpected icon element")
+                if any(key.lower().startswith("on") or "href" in key.lower() or "url(" in value.lower()
+                       for key,value in node.attrib.items()):
+                    raise ValueError("Active or external icon content")
+        except (ET.ParseError,ValueError):
+            issues.append({"file":name,"reason":"SVG must be a static original vector icon"})
     for label, pattern in PATTERNS:
         match = pattern.search(text)
         if match:

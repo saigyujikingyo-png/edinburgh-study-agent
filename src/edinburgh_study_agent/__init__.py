@@ -1,2 +1,2 @@
-"""Personal Edinburgh study companion; not a University product."""
-__version__ = "0.3.0"
+"""UoE Companion; independent of the University."""
+__version__ = "0.4.0"

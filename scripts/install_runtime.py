@@ -21,7 +21,7 @@ def install(package: Path, runtime: Path, plugin: Path | None = None,
         if plugin == package:
             raise ValueError("Use a separate extracted plugin path; the source config stays portable.")
         if not (plugin / ".codex-plugin/plugin.json").is_file():
-            raise ValueError("Target must be an extracted Edinburgh Study Agent plugin.")
+            raise ValueError("Target must be an extracted UoE Companion plugin.")
     uv = shutil.which("uv")
     python = runtime / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
     if not python.exists():

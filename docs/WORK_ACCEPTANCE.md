@@ -1,4 +1,18 @@
-# Work acceptance scope — 0.3.0
+# Work acceptance scope — UoE Companion 0.4.0
+
+Live acceptance: 2026-09-12, through the participant's existing ChatGPT Work task and private connection. Codex developed and deployed the update. The existing local campus session was reused without another login.
+
+- Work reported `UoE Companion 0.4.0` and read the explicit implemented, unverified and missing capability groups.
+- A fresh Learn course job reached `complete` with one default waiting call. Work retrieved the default first page and the remainder using `next_offset`, and checked the final non-truncated result. Source coverage was the current visible course-list scope, not formal enrolment evidence.
+- Reading an existing PDF with `refresh=false` returned a verified local copy and `browser_started=false`, with remote freshness explicitly unchecked.
+- A fresh transfer of that PDF with `refresh=true` succeeded with `reused=false`, a verified checksum and no failed entries. Work then read verified text from the new copy.
+- No screenshot, coordinate click, Work-browser login or per-file Save As was used.
+
+The four unchanged school-wide providers below retain their historical 0.3.0 evidence; this 0.4.0 run did not repeat every provider or test staff-only pages. The local upgraded runtime separately passed all 28-tool catalog, evidence pagination and restart-persistence checks. Public records omit the participant's courses, document identities, account details and private connection/task links.
+
+The new original icon is included in the public and installed plugin assets and advertised through standard MCP server icon metadata. Work's developer-connection management UI allowed name and description edits, but did not expose a separate icon upload control in this acceptance. Rendering server-provided icons depends on the host; a displayed custom Work connection icon is not part of the verified result.
+
+## Historical acceptance — 0.3.0
 
 Historical live acceptance: 2026-09-11. Work was the user and acceptance host; Codex was the development host. This public record intentionally omits the participant's enrolment, course names, document identifiers, account identifiers, task URLs and private connection details.
 

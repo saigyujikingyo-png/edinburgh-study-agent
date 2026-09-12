@@ -9,7 +9,7 @@ if ($KeyEnvironmentVariable -notmatch '^[A-Za-z_][A-Za-z0-9_]*$') { throw 'Inval
 if (-not (Test-Path -LiteralPath $TunnelClient -PathType Leaf)) { throw 'Install the official tunnel-client first.' }
 $studyRoot = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.edinburgh-study-agent'
 $runtimePython = Join-Path $studyRoot 'runtime\Scripts\python.exe'
-if (-not (Test-Path -LiteralPath $runtimePython -PathType Leaf)) { throw 'Install the Edinburgh Study Agent runtime first.' }
+if (-not (Test-Path -LiteralPath $runtimePython -PathType Leaf)) { throw 'Install the UoE Companion runtime first.' }
 $workRoot = Join-Path $studyRoot 'work'
 $secretRoot = Join-Path $studyRoot 'secrets'
 $secretFile = Join-Path $secretRoot 'work-tunnel-key.dpapi'

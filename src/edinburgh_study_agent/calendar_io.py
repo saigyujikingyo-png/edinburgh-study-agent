@@ -109,7 +109,7 @@ def export_calendar(store, start, end, filename="edinburgh-study.ics"):
         raise ValueError("Use a simple .ics filename, without directories.")
     first, stop = bounds(start, end)
     calendar = icalendar.Calendar()
-    calendar.add("prodid", "-//Personal Edinburgh Study Agent//EN")
+    calendar.add("prodid", "-//UoE Companion//EN")
     calendar.add("version", "2.0")
     calendar.add("x-wr-calname", "Edinburgh study - observed deadlines and events")
     items = store.list_items(limit=500)

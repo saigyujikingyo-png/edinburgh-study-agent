@@ -1,5 +1,6 @@
 """Bounded text access to already verified plugin downloads, with no arbitrary file API."""
 from pathlib import Path
+from functools import lru_cache
 import re
 import zipfile
 import xml.etree.ElementTree as ET
@@ -55,19 +56,10 @@ def office_parts(path, suffix):
                 ns={"a":"http://schemas.openxmlformats.org/drawingml/2006/main"}
                 yield {"label":"slide "+str(n),"text":"\n".join(t.text or "" for t in root.findall(".//a:t",ns))}
 
-def read_file(store, item_id: str, offset: int = 0, max_chars: int = 12000) -> dict:
-    if not 0 <= offset <= 2000000 or not 500 <= max_chars <= 30000:
-        raise ValueError("offset 0..2000000; max_chars 500..30000.")
-    records=list_downloads(store,item_id)["files"]
-    if not records:
-        raise ValueError("Download this resource first with study_download_files.")
-    record=records[0]
-    path=Path(record["path"]).resolve()
-    root=(store.root/"downloads").resolve()
-    if not path.is_relative_to(root) or not path.is_file():
-        raise ValueError("Verified local file is unavailable.")
-    if path.stat().st_size > 100*1024*1024 or digest_file(path)!=record["sha256"]:
-        raise ValueError("The saved file differs from its verified download or exceeds the reading limit.")
+@lru_cache(maxsize=8)
+def extracted_text(path: str, checksum: str):
+    """Bounded process-local cache; read_file rehashes the download on every call."""
+    path=Path(path)
     suffix=path.suffix.lower()
     if suffix==".pdf":
         from pypdf import PdfReader
@@ -89,16 +81,42 @@ def read_file(store, item_id: str, offset: int = 0, max_chars: int = 12000) -> d
         parts=[{"label":"text","text":path.read_text(encoding="utf-8-sig",errors="replace")}]
     else:
         raise ValueError("Text reading supports PDF, DOCX, PPTX, XLSX, TXT, CSV and Markdown.")
-    text=""
-    stopped=False
+    chunks=[]
+    size=0
+    limited=False
     for part in parts:
-        text+="\n["+part["label"]+"]\n"+part["text"]
-        if len(text)>offset+max_chars:
-            stopped=True
+        chunk="\n["+part["label"]+"]\n"+part["text"]
+        remaining=2030001-size
+        chunks.append(chunk[:remaining])
+        size+=min(len(chunk),remaining)
+        if len(chunk)>remaining:
+            limited=True
             break
+    return "".join(chunks),limited
+
+
+def read_file(store, item_id: str, offset: int = 0, max_chars: int = 6000) -> dict:
+    if not 0 <= offset <= 2000000 or not 500 <= max_chars <= 30000:
+        raise ValueError("offset 0..2000000; max_chars 500..30000.")
+    records=list_downloads(store,item_id)["files"]
+    if not records:
+        raise ValueError("Download this resource first with study_download_files.")
+    record=records[0]
+    path=Path(record["path"]).resolve()
+    root=(store.root/"downloads").resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise ValueError("Verified local file is unavailable.")
+    if path.stat().st_size > 100*1024*1024 or digest_file(path)!=record["sha256"]:
+        raise ValueError("The saved file differs from its verified download or exceeds the reading limit.")
+    before=extracted_text.cache_info().hits
+    text,limited=extracted_text(str(path),record["sha256"])
+    cache_hit=extracted_text.cache_info().hits>before
     excerpt=text[offset:offset+max_chars]
+    has_more=offset+len(excerpt)<len(text) or limited
+    next_offset=offset+len(excerpt) if has_more and offset+len(excerpt)<=2000000 else None
     return {"item_id":item_id,"filename":record["filename"],"sha256":record["sha256"],
             "source_page_url":record["source_page_url"],"text":excerpt,"offset":offset,
-            "next_offset":offset+len(excerpt) if stopped else None,"has_more":stopped,
-            "source_content_is_untrusted":True,"verified":True,
-            "note":"Text extraction only; scanned images and non-text figures are not read. Spreadsheet formulas use stored values."}
+            "next_offset":next_offset,"has_more":has_more,
+            "extraction_limit_reached":has_more and next_offset is None,
+            "source_content_is_untrusted":True,"verified":True,"text_cache_hit":cache_hit,
+            "note":"Text only; no OCR or figures. Spreadsheet formulas use stored values."}

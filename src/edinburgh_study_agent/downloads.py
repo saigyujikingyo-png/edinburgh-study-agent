@@ -83,6 +83,21 @@ def list_downloads(store, item_id=None):
         entry["file_exists"] = Path(entry["path"]).is_file()
     return {"files":files, "signed_urls_stored":False}
 
+def verified_copy(store,item_id,max_megabytes=100,filename=None):
+    """Find a verified local copy without opening the campus browser."""
+    for record in list_downloads(store,item_id)["files"]:
+        path=Path(record["path"]).resolve()
+        if not path.is_relative_to((store.root/"downloads").resolve()) or not path.is_file():
+            continue
+        if filename is not None and record["filename"]!=filename:
+            continue
+        if path.stat().st_size>max_megabytes*1024*1024 or digest_file(path)!=record["sha256"]:
+            continue
+        return {**record,"reused":True,"verified":True,"remote_freshness_checked":False,
+                "signed_urls_stored":False,"save_dialog_required":False}
+    return None
+
+
 def download_resource(store, item_id, download_url, filename, refresh=False, max_megabytes=100, client=None):
     item = store.item(item_id)
     if item["kind"]!="resource":
@@ -91,11 +106,10 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
     if not 1<=max_megabytes<=500:
         raise ValueError("max_megabytes must be 1..500.")
     url = validate_download_url(download_url)
-    if not refresh:
-        for record in list_downloads(store,item_id)["files"]:
-            path = Path(record["path"])
-            if path.is_file() and record["filename"]==name and digest_file(path)==record["sha256"]:
-                return {**record,"reused":True,"verified":True,"signed_urls_stored":False,"save_dialog_required":False}
+    if not refresh and name is not None:
+        cached=verified_copy(store,item_id,max_megabytes,name)
+        if cached:
+            return cached
     folder = store.root/"downloads"/re.sub(r"[^A-Za-z0-9_-]","_",item["course_id"] or "uncategorised")
     folder.mkdir(parents=True,exist_ok=True)
     temporary = folder/(".partial-"+uuid.uuid4().hex)

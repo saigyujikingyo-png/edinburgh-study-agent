@@ -12,7 +12,7 @@ A session may expire under university policy. MyEd, Learn, EUCLID, MyCareerHub a
 
 ## Normal usage
 
-Select the connected Edinburgh Study Agent in Work. Ask for the desired school task. For live information use the automatic tools and poll their jobs. A local personal Codex marketplace reference is not the Work connection.
+Select the connected UoE Companion in Work. Ask for the desired school task. For live information use the automatic tools and poll their jobs. A local personal Codex marketplace reference is not the Work connection.
 
 - Courses/files: `study_live_courses`, `study_live_resources`, `study_download_files`.
 - Reading: `study_read_resource`, `study_read_file`, `study_evidence`.
