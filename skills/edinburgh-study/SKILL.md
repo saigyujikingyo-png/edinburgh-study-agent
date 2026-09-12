@@ -5,7 +5,7 @@ description: Manage University of Edinburgh coursework and web resources from Ch
 
 # UoE Companion
 
-Use the user's language when locale=auto, otherwise honour study_preferences. Codex develops the plugin; Work, Claude, WorkBuddy, DeepSeek Harness and other MCP hosts are usage environments. The plugin has its own persistent campus browser on the user's computer. A Work cloud browser is not needed.
+Use the user's language when locale=auto, otherwise honour study_preferences. Codex develops the plugin; ChatGPT Chat, local Work, cloud Work, Claude, WorkBuddy, DeepSeek Harness and other MCP hosts are usage environments. All three ChatGPT modes use one connected UoE Companion entry; a second local marketplace package is not required. The plugin has its own persistent campus browser on the user's computer. A Work cloud browser is not needed.
 
 ## Efficient routing
 

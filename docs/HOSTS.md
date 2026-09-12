@@ -18,9 +18,9 @@ On macOS/Linux the installed executable is `~/.edinburgh-study-agent/runtime/bin
 
 Use `--home` to select a separate private data directory, `--python` for an explicit installed Python executable, and `--locale fr-FR` for the initial language. Paths are passed as arguments, not shell expressions. Language and timezone preferences can later be managed in the agent.
 
-## ChatGPT Chat and cloud Work
+## One ChatGPT plugin: Chat, local Work and cloud Work
 
-Follow [Work setup](WORK_SETUP.md) to create your own private Secure MCP Tunnel. Work cannot reach an arbitrary local stdio process or a loopback URL on your computer. The computer must remain on, signed in and online. Existing Chat/Work users keep their personal connection and refresh its tool catalog after upgrading. The app must be installed AND connected in ChatGPT. Bind the private local plugin with edinburgh_study_agent.chatgpt; check reports configuration only. No Work browser is required for campus operations.
+Follow [Work setup](WORK_SETUP.md) to create your own private Secure MCP Tunnel and install/connect one UoE Companion in ChatGPT. Chat, desktop local Work and cloud Work use that same registered connection. The backend runs on your campus computer, which must remain on, signed in and online in all three modes. The cloud cannot reach arbitrary local stdio processes or loopback URLs. A second local marketplace package is optional for Codex development and is not required for the three ChatGPT modes. Existing users keep the connection and refresh its tool catalog after upgrading. No host browser is required for campus operations.
 
 ## Claude Desktop
 
@@ -79,9 +79,11 @@ Ask in your preferred language, for example “Show my study agenda” or “显
 
 ## Acceptance levels
 
-| Client | Evidence in 0.5.0 | Remaining boundary |
+| Client | Evidence | Remaining boundary |
 | --- | --- | --- |
-| ChatGPT Chat / cloud Work | 0.5.1: ordinary Chat status/search and cloud Work live Learn refresh passed separately; see the acceptance record | Only tested account/service scope is established |
+| ChatGPT Chat | 0.5.1: actual status and cached course lookup, repeated after removing the duplicate local entry | Cached lookup is not live school access |
+| ChatGPT local Work | 0.5.1: user-created local Work called status and cached course lookup through the same registered connection; originator verified as codex_work_desktop | This local Work test did not repeat live refresh or download |
+| ChatGPT cloud Work | 0.5.1: live Learn refresh, then status/cached lookup again after consolidation | Only tested account/service scope is established |
 | Claude Desktop | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a Claude model turn have not been verified |
 | Claude Code | Portable entry and official-CLI installer implemented | CLI installation and model roundtrip not tested on the acceptance host |
 | WorkBuddy | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a WorkBuddy model turn have not been verified |

@@ -14,7 +14,7 @@ GUIDANCE = {
  },
  "hosts": {"core":"Standard MCP stdio; no Codex-only tool dependency or host browser.",
   "setup":"Run python -m edinburgh_study_agent.hosts generate in the installed runtime; doctor tests the MCP protocol. See docs/HOSTS.md for each client.",
-  "clients":{"chatgpt_work":"ChatGPT Chat and cloud Work share a personal app installed AND connected through the private tunnel. Bind the local plugin with edinburgh_study_agent.chatgpt; a local icon is not cloud acceptance.",
+  "clients":{"chatgpt_work":"ChatGPT Chat, local Work and cloud Work use one UoE Companion app installed AND connected through the private tunnel. Keep the campus backend online. A second local marketplace plugin is not required; bind is optional for Codex developers.",
    "claude_desktop":"Local mcpServers JSON, merge installer",
    "claude_code":"Official claude mcp CLI or project .mcp.json",
    "workbuddy":"User ~/.workbuddy/mcp.json, merge installer",

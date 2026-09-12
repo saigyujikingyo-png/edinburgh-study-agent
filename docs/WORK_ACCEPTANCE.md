@@ -1,4 +1,18 @@
-# Chat and cloud Work acceptance — UoE Companion
+# Chat, local Work and cloud Work acceptance — UoE Companion
+
+## 0.5.1 single-entry acceptance — 2026-09-12
+
+At the user's request, the duplicate local Codex package was uninstalled and only its personal-marketplace catalog entry removed. The campus runtime, profile, files and registered ChatGPT connection were preserved. The retained entry is named **UoE Companion**, without a separate connection suffix.
+
+After removal, actual model turns used the same registered connection:
+
+| Mode | Result | Scope |
+| --- | --- | --- |
+| Ordinary Chat | Status returned 0.5.1; a one-course cached query succeeded | No live refresh or download in this consolidation check |
+| Desktop local Work | The user created a local Work task; status and one-course lookup succeeded | Session metadata identified `codex_work_desktop`; both remote plugin tool calls completed. This was separate from the development task |
+| Cloud Work | The previous failing Work task again called status and returned one cached course | Separate live Learn refresh evidence appears below |
+
+All three reported the same version and cached course count. This verifies the single-entry connection for this person's deployment. It does not repeat every workflow in every mode. Private receipts retain the task/turn identities and local Work tool calls; they are not distributed.
 
 ## 0.5.1 connection recovery — 2026-09-12
 
