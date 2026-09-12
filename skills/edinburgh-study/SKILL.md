@@ -5,7 +5,7 @@ description: Manage University of Edinburgh coursework and web resources from Ch
 
 # UoE Companion
 
-Use the user's language. Codex is the development environment; ChatGPT Work is the intended user environment. The plugin has its own persistent campus browser on the user's computer. A Work cloud browser is not needed.
+Use the user's language when locale=auto, otherwise honour study_preferences. Codex develops the plugin; Work, Claude, WorkBuddy, DeepSeek Harness and other MCP hosts are usage environments. The plugin has its own persistent campus browser on the user's computer. A Work cloud browser is not needed.
 
 ## Efficient routing
 
@@ -14,6 +14,16 @@ Start with the tool that answers the request; do not always call status, directo
 Poll school jobs with the default `wait_seconds=20` (maximum 25), optionally passing `if_updated_at` from the previous result. Unchanged progress does not need narration or extra status calls. Continue until a terminal state; fetch remaining pages if needed. Read document/evidence text in relevant 6000-character pages.
 
 For an already downloaded document, use `study_read_file` directly. `study_read_resource(refresh=False)` and `study_download_files(refresh=False)` reuse checksum-verified local files without starting the browser where possible. Use `refresh=True` when the user needs current remote files; local reuse does not check remote freshness.
+
+## Student edition and languages
+
+Use `study_help(topic="student"|"hosts"|"languages"|"capabilities")` for on-demand guidance, including in hosts that do not load skills. `study_preferences()` reads persistent settings; only supply fields the user wants changed. Support the user's language without changing official names, IDs, URLs, filenames or quoted evidence. Add translated names alongside originals when requested. Do not assume language determines timezone.
+
+`study_services(query,locale)` searches a ten-language catalog; it does not semantically translate live or cached course content. Temporary `locale` overrides on services/agenda/help do not change persistent preferences. Report explicit catalog fallback when relevant; host-generated explanations may use any language.
+
+`study_agenda` combines cached classes, deadlines and active local tasks. Page with next_offset; show unknown_dates and dated coverage. London dates define the requested range, display_timezone only changes added display timestamps. Date-only deadlines retain their day without an invented time. Local done is not university submission. Use imported official ICS data for structured timetable planning; displayed timetable text alone is insufficient.
+
+New local-host configs use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
 
 ## Start from the request
 

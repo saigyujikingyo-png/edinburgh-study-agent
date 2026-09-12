@@ -43,6 +43,7 @@ class Store:
                   id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE INDEX IF NOT EXISTS observations_source_time ON observations(source, julianday(observed_at) DESC);
                 CREATE INDEX IF NOT EXISTS items_recent ON items(observed_at DESC, id);
+                CREATE TABLE IF NOT EXISTS preferences (key TEXT PRIMARY KEY, value TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS audit (
                   seq INTEGER PRIMARY KEY, at TEXT NOT NULL, action TEXT NOT NULL,
                   object_id TEXT NOT NULL);
@@ -68,6 +69,13 @@ class Store:
     def audit(db, action, object_id):
         db.execute("INSERT INTO audit(at,action,object_id) VALUES(?,?,?)",
                    (now_utc().isoformat(), action, object_id))
+
+    def preferences(self, changes=None) -> dict:
+        with self.connection() as db:
+            if changes:
+                db.executemany("INSERT INTO preferences(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                               ((key,json.dumps(value,ensure_ascii=False)) for key,value in changes.items()))
+            return {row["key"]:json.loads(row["value"]) for row in db.execute("SELECT key,value FROM preferences")}
 
     def capture(self, observation: Observation) -> dict:
         payload = observation.model_dump(mode="json")

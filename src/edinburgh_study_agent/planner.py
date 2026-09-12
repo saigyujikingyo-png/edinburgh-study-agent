@@ -28,9 +28,10 @@ def build_plan(store, start_date: str, days: int = 7, daily_minutes: int = 120,
     if first < clock.date():
         raise ValueError("A study plan cannot start in the past.")
     tasks = [t for t in store.tasks()["tasks"] if t["status"] in ("todo", "doing")]
-    events = store.list_items(kind="event", limit=500)
+    from .agenda import window
+    events = window(store, start_date, (first+timedelta(days=days-1)).isoformat(), kind="event")
     if events["truncated"]:
-        raise ValueError("More than 500 cached events; narrow/import the relevant timetable before planning.")
+        raise ValueError("More than 500 events in this planning window; choose fewer days.")
     busy = []
     for item in events["items"]:
         if item["status"] != "cancelled" and item["starts_at"] and item["ends_at"]:

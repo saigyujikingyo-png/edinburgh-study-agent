@@ -1,7 +1,7 @@
 {
   "name": "edinburgh-study-agent",
-  "version": "0.4.0",
-  "description": "UoE Companion: personal University of Edinburgh resources and workflows for AI agents.",
+  "version": "0.5.0",
+  "description": "UoE Companion student edition: coursework, resources and planning across MCP agents.",
   "author": {
     "name": "UoE Companion contributors"
   },
@@ -18,12 +18,17 @@
     "work",
     "euclid",
     "careers",
-    "events"
+    "events",
+    "student",
+    "claude",
+    "workbuddy",
+    "deepseek",
+    "multilingual"
   ],
   "interface": {
     "displayName": "UoE Companion",
-    "shortDescription": "爱丁堡校园助手：集中查资源、读课件、整理事务",
-    "longDescription": "供同学和老师独立部署的校园资源助手。已实现受支持页面读取、课件下载与文本读取、收藏和本地待办。教师专用后台未验收，教学管理写入尚未实现。每人使用自己的校园登录与私有连接。独立项目，非校方官方产品。",
+    "shortDescription": "Edinburgh student resources, coursework and planning",
+    "longDescription": "Student-first University of Edinburgh companion for Work and other MCP agents. Reuse your own campus login to find and read supported resources, download files, organise tasks and view an evidence-based agenda. Ten-language service catalog. Each person installs and connects independently. Independent open-source project; not an official University product. Staff administration and remote school writes are not implemented.",
     "developerName": "UoE Companion contributors",
     "category": "Productivity",
     "capabilities": [

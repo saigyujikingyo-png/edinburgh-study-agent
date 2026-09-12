@@ -19,7 +19,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 from .store import Store, identifier
 from .models import now_utc, safe_url, Item, Observation, SOURCE_HOSTS
-from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, RESOURCE_LINKS, EXPANDERS,
+from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, COURSE_SCAN, RESOURCE_LINKS, EXPANDERS,
                          COURSE_ID, course_items, resource_items, observation, learn_url)
 from .downloads import download_resource, list_downloads, safe_filename, verified_copy
 
@@ -176,7 +176,9 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
         python = python.with_name("pythonw.exe")
     environment = dict(os.environ, EDINBURGH_STUDY_HOME=str(store.root.resolve()), PYTHONUTF8="1")
     # Connection keys are unnecessary in the school browser process.
-    for key in ("CONTROL_PLANE_API_KEY","EDINBURGH_TUNNEL_KEY","OPENAI_API_KEY"):
+    for key in list(environment):
+        if not re.search(r"(?i)(api_?key|token|secret|password|credential|tunnel_key)", key):
+            continue
         environment.pop(key,None)
     flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS if os.name == "nt" else 0
     try:
@@ -322,13 +324,8 @@ def wait_cards(page) -> list[dict]:
     previous, stable = None, 0
     rows = []
     while time.monotonic() < deadline:
-        rows = page.evaluate(COURSE_CARDS)
-        slots = page.locator('a[id^="course-link-"]').count()
-        placeholder = page.locator('a[id="course-link-"]')
-        if placeholder.count():
-            # Learn populates off-screen cards only after their row enters the viewport.
-            # This semantic scroll costs no visual tokens and does not open a course.
-            placeholder.first.scroll_into_view_if_needed(timeout=3000)
+        scan = page.evaluate(COURSE_SCAN)
+        rows, slots = scan["rows"], scan["slots"]
         signature = tuple((r["native_id"],r["title"]) for r in rows)
         stable = stable + 1 if signature == previous else 0
         previous = signature

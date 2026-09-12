@@ -5,6 +5,10 @@ CAPABILITIES = {
         "Supported MyEd/EUCLID student pages and Timetabler displayed-page reading",
         "Bounded official careers/events pages and MyCareerHub links",
         "Dated evidence, collections, tags, local tasks and draft plans",
+        "Unified cached student agenda, linked local tasks and independent display timezone",
+        "Ten-language service catalog, persistent preferences and per-call language overrides",
+        "Portable MCP schemas, student tool profile and host configuration generator/merge installers",
+        "Official DeepSeek MCP bridge integration tested with a registration fixture",
         "Local ICS import/export; one private profile and connection per person",
     ],
     "not_implemented": [
@@ -15,6 +19,8 @@ CAPABILITIES = {
         "OCR, lecture-video transcription and all external/LTI providers",
     ],
     "unverified": [
+        "Full Claude, WorkBuddy and DeepSeek model-turn acceptance; configuration/protocol/bridge tests are narrower",
+        "Native-speaker review of every catalog translation and automatic translation of all source documents",
         "Teacher/staff-only Learn, EUCLID and administration pages",
         "Every feature of all 17 directory entries; actual coverage is per user and service",
         "Live campus operation on macOS/Linux; Windows is the campus acceptance host",

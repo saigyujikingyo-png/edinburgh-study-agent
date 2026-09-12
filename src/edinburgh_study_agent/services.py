@@ -54,25 +54,28 @@ def service(service_id: str) -> dict:
     return dict(BY_ID[service_id])
 
 
-def directory(store, query: str = "") -> dict:
+def directory(store, query: str = "", locale: str | None = None) -> dict:
+    from .localization import presentation, search_key, service_labels, service_aliases
+    view = presentation(store, locale)
     with store.connection() as db:
         checks = {r["service_id"]:json.loads(r["payload"]) for r in db.execute("SELECT * FROM service_checks")}
     latest=store.latest_observations()
     for source in ("learn","myed"):
         if source not in checks and source in latest:
             checks[source]=latest[source]
-    needle = query.strip().casefold()
+    needle = search_key(query)
     result = []
     for entry in SERVICES:
-        if needle and needle not in " ".join(str(v) for v in entry.values()).casefold():
+        if needle and needle not in search_key(" ".join(str(v) for v in entry.values()) + " " + service_aliases(entry["id"])):
             continue
         current = dict(entry)
+        current.update(service_labels(entry["id"], view["catalog_language"]))
         current["supported_actions"] = ["read", "search cached text", "follow observed links", "collect", "local task"]
         if current.get("adapter") == "learn":
             current["supported_actions"] += ["course pagination", "expand course folders", "download original files"]
         current["last_check"] = checks.get(entry["id"])
         current["coverage"] = checks.get(entry["id"],{}).get("coverage","not_yet_verified")
         result.append(current)
-    return {"services":result,"live":False,"directory_is_not_connection_proof":True,
+    return {"services":result,"presentation":view,"live":False,"directory_is_not_connection_proof":True,
             "scope":"Configured entrypoints plus observed links; external providers, form submissions and private pages need individual verification.",
             "next_tool":"study_read_service; Learn uses study_live_courses/study_live_resources"}
