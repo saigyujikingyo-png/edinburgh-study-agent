@@ -119,7 +119,7 @@ def cached_operation(store: Store,action: str,args: dict):
                     "remote_freshness_checked":False}
     if action=="read_resource":
         item=store.item(args["item_id"])
-        if item["source"]!="learn" or item["kind"]!="resource":
+        if item["source"]!="learn" or item["kind"] not in {"resource","assignment"}:
             return None
         saved=verified_copy(store,item["id"])
         if saved:

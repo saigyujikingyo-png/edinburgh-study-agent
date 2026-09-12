@@ -111,22 +111,17 @@ class Store:
     def list_items(self, kind=None, course_id=None, query="", limit=100, offset=0) -> dict:
         if not 1 <= limit <= 500 or not 0 <= offset <= 1000000:
             raise ValueError("limit must be 1..500; offset 0..1000000.")
-        clauses, params = [], []
-        if kind:
-            clauses.append("kind=?")
-            params.append(kind)
-        if course_id:
-            clauses.append("course_id=?")
-            params.append(course_id)
-        needle=normal(query)
-        if needle:
-            clauses.append("instr(search_text,?)>0")
-            params.append(needle)
-        where=(" WHERE "+" AND ".join(clauses)) if clauses else ""
+        # Fixed SQL templates: every caller-controlled value is bound separately.
+        params=(kind,kind,course_id,course_id,normal(query))
         with self.connection() as db:
-            total=db.execute("SELECT COUNT(*) FROM items"+where,params).fetchone()[0]
-            rows=db.execute("SELECT * FROM items"+where+" ORDER BY observed_at DESC,id LIMIT ? OFFSET ?",
-                            [*params,limit,offset]).fetchall()
+            total=db.execute("""SELECT COUNT(*) FROM items
+                WHERE (? IS NULL OR kind=?) AND (? IS NULL OR course_id=?)
+                AND instr(search_text,?)>0""",params).fetchone()[0]
+            rows=db.execute("""SELECT * FROM items
+                WHERE (? IS NULL OR kind=?) AND (? IS NULL OR course_id=?)
+                AND instr(search_text,?)>0
+                ORDER BY observed_at DESC,id LIMIT ? OFFSET ?""",
+                (*params,limit,offset)).fetchall()
         return {"items":[self._row(r) for r in rows],"total_matches":total,
                 "truncated":offset+len(rows)<total,"offset":offset,
                 "next_offset":offset+len(rows) if offset+len(rows)<total else None,
@@ -139,7 +134,8 @@ class Store:
         with self.connection() as db:
             for index in range(0,len(keys),400):
                 batch=keys[index:index+400]
-                rows=db.execute("SELECT * FROM items WHERE id IN ("+",".join("?" for _ in batch)+")",batch)
+                rows=db.execute("SELECT * FROM items WHERE id IN (SELECT value FROM json_each(?))",
+                                (json.dumps(batch),))
                 found.update((row["id"],self._row(row)) for row in rows)
         if any(key not in found for key in keys):
             raise ValueError("Unknown item_id. Refresh the source.")

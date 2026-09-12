@@ -165,3 +165,32 @@ def test_teacher_workflows_are_not_claimed_as_verified(tmp_path,monkeypatch):
     assert result["name"]=="UoE Companion"
     assert any("Teacher" in item for item in result["feature_status"]["unverified"])
     assert any("marking" in item for item in result["feature_status"]["not_implemented"])
+
+
+def test_query_values_cannot_change_sql_structure(tmp_path):
+    store=Store(tmp_path)
+    keys=capture(store)["inserted"]
+    injection="' OR 1=1 --"
+    assert store.list_items(query=injection)["total_matches"]==0
+    assert store.list_items(course_id=injection)["total_matches"]==0
+    assert store.list_items(kind=injection)["total_matches"]==0
+    with pytest.raises(ValueError,match="Unknown item_id"):
+        store.items_by_ids([injection])
+    assert store.items_by_ids([])==[]
+    assert [i["id"] for i in store.items_by_ids(keys[::-1])]==keys[::-1]
+    assert store.list_items()["total_matches"]==len(keys)
+
+
+def test_cached_assignment_file_reuses_only_verified_local_copy(tmp_path,monkeypatch):
+    store=Store(tmp_path)
+    key=capture(store)["inserted"][0]
+    path=add_text(store,key)
+    with store.connection() as db:
+        row=json.loads(db.execute("SELECT payload FROM items WHERE id=?",(key,)).fetchone()[0])
+        row["kind"]="assignment"
+        db.execute("UPDATE items SET kind=?,payload=? WHERE id=?",("assignment",json.dumps(row),key))
+    monkeypatch.setattr(school.subprocess,"Popen",lambda *a,**kw:pytest.fail("browser worker started"))
+    value=school.start_job(store,"read_resource",{"item_id":key,"refresh":False})
+    assert value["state"]=="complete" and value["browser_started"] is False
+    path.write_text("modified",encoding="utf-8")
+    assert school.cached_operation(store,"read_resource",{"item_id":key,"refresh":False}) is None
