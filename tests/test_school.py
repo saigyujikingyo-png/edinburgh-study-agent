@@ -134,9 +134,12 @@ def test_login_required_does_not_fabricate_course_results(tmp_path,monkeypatch):
     assert school.session_status(store)["previous_check"]["authenticated"] is False
     assert store.list_items(kind="course")["items"] == []
 
-def test_lazy_course_rows_are_scrolled_into_view(dom_page):
+def test_lazy_course_rows_load_without_waiting_for_visual_stability(dom_page):
     dom_page.set_content("""
-      <style>#main{height:150px;overflow:auto}.row{height:160px}</style>
+      <style>#main{height:150px;overflow:auto}
+      .row{height:160px;animation:drift 50ms linear infinite alternate}
+      @keyframes drift{from{transform:translateX(0)}to{transform:translateX(2px)}}
+      </style>
       <div id="main">
         <div class="row"><a id="course-link-_1_1">Chemistry</a></div>
         <div class="row"><a id="course-link-" style="display:block;height:30px"></a></div>

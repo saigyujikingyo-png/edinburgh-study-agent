@@ -13,6 +13,14 @@ COURSE_CARDS = """() => [...document.querySelectorAll('a[id^="course-link-_"]')]
   .filter(a => /^course-link-_\\d+_\\d+$/.test(a.id) && a.innerText.trim())
   .map(a => ({native_id:a.id.slice(12),title:a.innerText.trim(),
     href:a.getAttribute('href'),details:a.parentElement.innerText.slice(0,2500),status:a.parentElement.querySelector('.course-status')?.innerText || ''}))"""
+# One DOM operation gives a consistent row/slot snapshot and reveals a lazy row.
+# Native instant scrolling does not wait for visual layout stability/animation frames.
+COURSE_SCAN = """() => {
+  const cards = [...document.querySelectorAll('a[id^="course-link-"]')];
+  const pending = cards.find(a => a.id === 'course-link-');
+  if (pending) pending.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+  return {rows:(""" + COURSE_CARDS + """)(), slots:cards.length};
+}"""
 RESOURCE_LINKS = """() => [...document.querySelectorAll('a[href]')]
   .filter(a => /\\/ultra\\/courses\\/_\\d+_\\d+\\/(file|document|assessment)\\/_\\d+_\\d+/.test(a.href) && a.innerText.trim())
   .map(a => ({title:a.innerText.trim(),url:a.href}))"""
