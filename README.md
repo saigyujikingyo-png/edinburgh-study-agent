@@ -2,9 +2,9 @@
 
 # UoE Companion · 爱丁堡校园助手
 
-面向学生，在 **ChatGPT 聊天与云端 Work、Claude、WorkBuddy、DeepSeek Agent** 等通用智能体中，用自然语言集中查找学校资源、下载和阅读课件、整理学习日程。**Codex 用于开发，Work 是实际使用与验收环境之一。** 独立开源项目，非爱丁堡大学官方产品。
+面向学生，在 **ChatGPT 聊天、本地 Work、云端 Work、Claude、WorkBuddy、DeepSeek Agent** 等通用智能体中，用自然语言集中查找学校资源、下载和阅读课件、整理学习日程。**Codex 用于开发，Work 是实际使用与验收环境之一。** 独立开源项目，非爱丁堡大学官方产品。
 
-Manage University of Edinburgh resources and personal workflows through natural language in ChatGPT Chat, cloud Work or another MCP host. Each person uses their own campus account, local data and private connection.
+Manage University of Edinburgh resources and personal workflows through natural language in ChatGPT Chat, local Work, cloud Work or another MCP host. Each person uses their own campus account, local data and private connection.
 
 [下载 0.5.1](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.5.1) · [多智能体接入 / Agent setup](docs/HOSTS.md) · [多语言 / Languages](docs/LANGUAGES.md) · [分享与安装](docs/SHARING.md) · [聊天 / Work 连接](docs/WORK_SETUP.md) · [性能](docs/PERFORMANCE.md) · [验收范围](docs/WORK_ACCEPTANCE.md)
 
@@ -12,7 +12,7 @@ Manage University of Edinburgh resources and personal workflows through natural 
 
 在插件专属窗口完成校园登录和 MFA 后，后续请求复用会话。查询和下载通过结构化 DOM 与直接 HTTP 完成，无截图、视觉点击、逐文件“另存为”。学校会话过期时仍须重新登录。
 
-| 功能 | 0.5.0 学生版状态与边界 |
+| 功能 | 0.5.1 学生版状态与边界 |
 | --- | --- |
 | Learn 课程与资源 | 已实现课程分页、受支持文件夹内容发现、查找原始附件、批量下载和完整性校验 |
 | 读取文件 | 已实现 PDF、DOCX、PPTX、XLSX、TXT、CSV、Markdown 文本读取；可复用校验后的本地文件 |
@@ -54,7 +54,7 @@ cd edinburgh-study-agent
 python scripts/install_runtime.py
 ```
 
-聊天与云端 Work 使用同一个已安装且已连接的个人 ChatGPT 插件；本机插件的图标或安装状态不代表云端已连接。0.5.1 增加私人应用关联、升级保留和分层检查，详见[连接说明](docs/WORK_SETUP.md)。
+在 ChatGPT 只保留一个已安装且已连接的 **UoE Companion** 入口，供聊天、本地 Work 和云端 Work 共用。三个场景已分别完成状态和缓存课程查询；云端 Work 另有实时课程刷新验收。后台校园服务独立运行，不需要再安装一个同名的本机目录插件。详见[连接说明](docs/WORK_SETUP.md)与[验收范围](docs/WORK_ACCEPTANCE.md)。
 
 安装器创建 `~/.edinburgh-study-agent/runtime` 和私有 `mcp.json`，不会把凭据写进源码。本地用户按[多智能体接入指南](docs/HOSTS.md)生成或合并客户端配置；Work 用户继续按 [Work 连接指南](docs/WORK_SETUP.md) 建立自己的私有连接并登录学校。Work 的初次连接仍需要配置，不是通用一键安装服务。
 

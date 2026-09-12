@@ -10,7 +10,7 @@ UoE Companion 优先完善学生版；老师可试用本人有权限的资源读
 
 1. 在自己的 Windows 电脑安装 Python 3.11+ 和 Google Chrome。
 2. 下载发布 zip 并解压，或克隆仓库。在该目录运行 `python scripts/install_runtime.py`。
-3. 若使用 ChatGPT 聊天或云端 Work，按 [Work 连接说明](WORK_SETUP.md)创建自己的私有 Secure MCP Tunnel 并连接插件。所需 Work/隧道权限取决于账户；缺少权限时可使用本地 MCP 主机，但不能将其称为 Work 验收。
+3. 若使用 ChatGPT 聊天、本地 Work 或云端 Work，按 [Work 连接说明](WORK_SETUP.md)创建自己的私有 Secure MCP Tunnel，并安装、连接唯一的 UoE Companion；三个模式共用此入口，无需再安装同名本机目录条目。所需 Work/隧道权限取决于账户；缺少权限时可使用本地 MCP 主机，但不能将其称为 Work 验收。
    本地 Claude、WorkBuddy 或 DeepSeek Agent 用户按[多智能体接入说明](HOSTS.md)配置，使用同一人的私有资料目录即可复用校园登录。
 4. 在 agent 中要求“连接学校”。只在本机插件专属学校窗口输入密码和 MFA。后续请求复用该校园会话。
 5. 依次尝试查课程、下载一个文件、读取其文本、加入收藏。检查结果的来源时间和覆盖范围。
