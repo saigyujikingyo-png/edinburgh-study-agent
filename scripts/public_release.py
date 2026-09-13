@@ -14,12 +14,13 @@ TOP_FILES = {
     ".gitignore", ".gitattributes", ".mcp.json", "pyproject.toml",
     "requirements.lock", "README.md", "VERIFICATION.md", "LICENSE",
     "CONTRIBUTING.md", "SECURITY.md", "THIRD_PARTY_NOTICES.md",
+    "AGENTS.md", "DEVELOPMENT_PRINCIPLES.md", "CODEX_CLOUD.md", "CLOUD_STORAGE.md",
 }
 SCRIPT_FILES = {
     "install_runtime.py", "run_server.py", "smoke_mcp.py", "verify_runtime.py", "verify_deepseek.py",
     "package_plugin.py", "public_release.py", "benchmark.py", "Connect-Work.ps1",
     "Enable-Work-Connection.ps1", "Run-Work-Connection.ps1",
-    "Stop-Work-Connection.ps1",
+    "Stop-Work-Connection.ps1", "setup_codex_cloud.sh",
 }
 SOURCE_ROOTS = {".codex-plugin", ".github", "src", "scripts", "tests", "docs", "skills", "assets"}
 PATTERNS = [

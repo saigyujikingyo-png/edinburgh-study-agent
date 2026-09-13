@@ -2,7 +2,7 @@
 
 Part of the [Chembridge cloud workspace](https://github.com/saigyujikingyo-png/chembridge). Read [shared principles](DEVELOPMENT_PRINCIPLES.md) and [contributor instructions](AGENTS.md) first.
 
-This environment checks the portable core, synthetic browser fixtures and stdio MCP transport. Browser installation is limited to this cloud container. It does not log into a university account or import a private browser profile.
+This environment checks the portable core, synthetic browser fixtures and stdio MCP transport. Browser installation, when needed on a non-root runner, is limited to the test environment; root containers skip that download. It does not log into a university account or import a private browser profile.
 
 ## Environment configuration
 
@@ -21,6 +21,8 @@ The setup uses a repository-local `.venv`; it does not combine this product's de
 .venv/bin/python scripts/smoke_mcp.py
 .venv/bin/python scripts/public_release.py --git-index
 ```
+
+The Codex universal container currently runs as root. The four synthetic DOM tests require sandboxed Chrome under a non-root user, so they report explicit skips in that container; the browser sandbox is not disabled. Run those tests in the existing non-root Ubuntu/Windows CI matrix and record its result separately. Remaining portable tests and the real stdio smoke test run inside the cloud virtual environment.
 
 Record the tested commit, runtime, command output and failures/skips. A setup or protocol pass is not native-software, account, host/model or final-artifact acceptance. Keep those results in this product's own records. Environment configuration does not change source ownership or authorise edits to another task's branch.
 

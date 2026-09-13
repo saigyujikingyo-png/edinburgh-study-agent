@@ -16,7 +16,8 @@ MODULE = "edinburgh_study_agent.server"
 HOSTS = ("generic", "claude-desktop", "claude-code", "workbuddy", "deepseek-harness", "chatgpt-work")
 
 def server_config(python, home, locale="auto", profile="student"):
-    python, home = Path(python).resolve(), Path(home).resolve()
+    # Resolving a venv executable symlink selects the base interpreter instead.
+    python, home = Path(os.path.abspath(python)), Path(home).resolve()
     if not python.is_file():
         raise ValueError("Install the private Python runtime first.")
     if profile not in ("student", "full"):
