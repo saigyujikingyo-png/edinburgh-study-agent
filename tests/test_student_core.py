@@ -181,6 +181,12 @@ def test_legacy_chat_work_catalog_routes_to_same_core(tmp_path,monkeypatch):
     assert continuation["tool"]=="study_read_service"
     next_reply=server.study_read_service(**{k:v for k,v in continuation.items() if k!="tool"})
     assert next_reply.structuredContent["result"]["offset"]==1
+    week_reply=server.study_read_service(service_id="timetable",
+        query='{"semester":1,"academic_year":"2026/27","week":6,"view":"occurrences"}')
+    week_body=week_reply.structuredContent["result"]
+    assert week_body["occurrence_count"]==1 and week_body["items"][0]["week"]==6
+    with pytest.raises(ValueError,match="week"):
+        server.study_read_service(service_id="timetable",query='{"week":99}')
     with pytest.raises(ValueError):
         server.study_read_service(service_id="timetable",query='{"download_url":"https://other.example"}')
 

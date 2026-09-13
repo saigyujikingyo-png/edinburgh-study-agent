@@ -330,7 +330,7 @@ def legacy_basic_workflow(service_id,item_id,query,academic_year=None):
         args["view"]="inboxes" if query.casefold() in {"inboxes","messages","消息"} else "activity"
     else:args["query"]=query
     if service_id=="timetable":
-        allowed={"academic_year","semester","start","end","view","refresh","offset","limit"}
+        allowed={"academic_year","semester","week","start","end","view","refresh","offset","limit"}
         if set(args)-allowed:raise ValueError("Unsupported timetable option.")
         args.update(item_id=item_id)
         if academic_year:args["academic_year"]=academic_year
