@@ -65,6 +65,10 @@ Retrieval and the numeric year summaries passed this bounded test. Whole-answer 
 
 The final refinement computes descriptive year summaries in the plugin and includes concise-table guidance in the tool description and every result, including older cache payloads. It preserves missing data and requires separately verified official sources for grading, progression or degree interpretations. No host system prompt, personal memory or unrelated configuration is modified. A further model turn with this refinement has not been verified; reduced total latency and compliance with the guidance are not guaranteed.
 
+## Final installed-runtime check
+
+The final descriptive-summary build passed 144 tests and the 32-tool full-profile stdio smoke test. The existing WorkBuddy configuration exposed 29 tools; all 23 installed Python modules matched both source and wheel. An initial live probe returned a non-JSON tool error and its worker ended before a result; the underlying cause was not captured. One controlled retry completed in 10.878 seconds, and the subsequent cache read took 0.014 seconds. The three year summaries were independently checked against the returned rows. This incident is retained as an unresolved intermittent observation, not omitted from the successful retry metrics.
+
 ## Upgrade
 
 Install the new package into the existing private runtime. Keep the user's campus profile, database, downloads and host configuration. Refresh or reconnect the UoE MCP entry so WorkBuddy loads `study_results` and its new instructions. Other connectors do not need reinstalling.
