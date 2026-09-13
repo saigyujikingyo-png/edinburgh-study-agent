@@ -189,3 +189,53 @@ def test_old_portal_call_advertises_results_without_an_extra_catalog_roundtrip(t
     assert queued["host_browser_required"] is False
     assert hint["tool"]=="study_results" and hint["arguments"]=={"academic_year":"all"}
     assert hint["status"]=="implemented"
+
+
+def test_summary_uses_credits_preserves_zero_and_does_not_infer_blank_marks():
+    rows=[dict(mark="80%",credits="20"),dict(mark="50",credits="40"),
+          dict(mark="0",credits="20"),dict(mark="-",credits="-")]
+    summary=results.year_summary(rows,True)
+    assert summary==dict(numeric_marks=3,marks_not_in_mean=1,
+        mean_status="calculated",credits_used=80.0,credit_weighted_mean=45.0)
+    assert rows[-1]==dict(mark="-",credits="-")
+
+
+@pytest.mark.parametrize("weight",["", "-", "0", "-20", "NaN", "Infinity"])
+def test_summary_withholds_mean_when_any_numeric_mark_has_unusable_credits(weight):
+    summary=results.year_summary([dict(mark="80",credits="20"),dict(mark="50",credits=weight)],True)
+    assert summary["mean_status"]=="missing_or_nonpositive_credits"
+    assert "credit_weighted_mean" not in summary and "credits_used" not in summary
+
+
+def test_summary_withholds_incomplete_panel_and_missing_marks():
+    partial=results.year_summary([dict(mark="80",credits="20")],False)
+    assert partial["mean_status"]=="incomplete_panel" and "credit_weighted_mean" not in partial
+    blank=results.year_summary([dict(mark="-",credits="20"),dict(mark="",credits="20")],True)
+    assert blank["mean_status"]=="no_numeric_marks" and blank["numeric_marks"]==0
+    assert "credit_weighted_mean" not in blank
+
+
+def test_summary_rejects_nonpercentage_values_and_rounds_explicitly():
+    rows=[dict(mark="60.005%",credits="20"),
+          *[dict(mark=mark,credits="20") for mark in ("101","-1","NaN","P","Infinity")]]
+    value=results.year_summary(rows,True)
+    assert value["numeric_marks"]==1 and value["marks_not_in_mean"]==5
+    assert value["credit_weighted_mean"]==60.01
+
+
+def test_old_cache_gets_current_summaries_before_response_pagination(tmp_path,monkeypatch):
+    store=Store(tmp_path)
+    source=panels(); source[0]["records"]*=110; source[0]["block_count"]=110
+    value=results.read_results(store,Page(source))
+    for year in value["years"]:
+        year.pop("summary")
+    value.pop("answer_guidance")
+    value.pop("summary_method")
+    with store.connection() as db:
+        db.execute("UPDATE result_cache SET payload=? WHERE academic_year='all'",(json.dumps(value),))
+    monkeypatch.setattr(server,"store",lambda:store)
+    actual=server.study_results().structuredContent["result"]
+    assert actual["years"][0]["summary"]["marks_not_in_mean"]==110
+    assert actual["years"][1]["summary"]["credit_weighted_mean"]==0
+    assert len(actual["items"])==100
+    assert actual["answer_guidance"] and actual["summary_method"]

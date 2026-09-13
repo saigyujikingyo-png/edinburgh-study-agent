@@ -86,7 +86,7 @@ Ask in your preferred language, for example “Show my study agenda” or “显
 | ChatGPT cloud Work | 0.5.1: live Learn refresh, then status/cached lookup again after consolidation | Only tested account/service scope is established |
 | Claude Desktop | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a Claude model turn have not been verified |
 | Claude Code | Portable entry and official-CLI installer implemented | CLI installation and model roundtrip not tested on the acceptance host |
-| WorkBuddy | A real Hy4 preview (high) trial connected successfully but failed historical grade retrieval in 0.5.1. Version 0.5.2 repairs the adapter and adds a direct results tool; see [diagnosis](WORKBUDDY_RESULTS.md). | The repaired MCP/runtime test is separate from a new WorkBuddy model turn |
+| WorkBuddy | 0.5.2: a fresh Hy4 preview (high) conversation used one results call and returned all loaded years; source rows and year means were checked. See [measurements](WORKBUDDY_RESULTS.md). | The turn took 89.4 seconds and added unsupported interpretation; final summary/presentation guidance needs a new model test. This is not Terra max acceptance |
 | DeepSeek Harness | Official bridge successfully discovered 28 tools, accepted schemas, executed multilingual catalog/preferences and task/agenda calls, rendered text and propagated errors | Registration/lifecycle fixture, not a full Harness agent/model turn |
 | Generic MCP | Real stdio initialization/list/call checks for both tool profiles | Individual clients and model behavior require their own acceptance |
 

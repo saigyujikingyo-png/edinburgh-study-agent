@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 from .models import Item, Observation, clean_text, now_utc
 from .store import identifier
 
@@ -45,6 +46,59 @@ def validate_year(value: str) -> str:
     match=YEAR.fullmatch(value)
     if not match or int(match[2]) != (int(match[1])+1) % 100:
         raise ValueError("academic_year must be all, current or YYYY/YY (for example 2025/26).")
+    return value
+
+
+def _number(value, *, percentage=False):
+    value=str(value).strip()
+    if percentage:
+        value=value.removesuffix("%").strip()
+    if not re.fullmatch(r"\d+(?:\.\d+)?",value):
+        return None
+    number=Decimal(value)
+    if percentage and not 0<=number<=100:
+        return None
+    return number
+
+
+def year_summary(records, complete):
+    """Descriptive statistics of observed marks, never an award calculation."""
+    marked=[(mark,_number(row.get("credits",""))) for row in records
+            if (mark:=_number(row.get("mark",""),percentage=True)) is not None]
+    summary={"numeric_marks":len(marked),"marks_not_in_mean":len(records)-len(marked)}
+    if not complete:
+        summary["mean_status"]="incomplete_panel"
+    elif not marked:
+        summary["mean_status"]="no_numeric_marks"
+    elif any(credits is None or credits<=0 for _,credits in marked):
+        summary["mean_status"]="missing_or_nonpositive_credits"
+    else:
+        credits=sum(weight for _,weight in marked)
+        mean=sum(mark*weight for mark,weight in marked)/credits
+        summary.update(mean_status="calculated",credits_used=float(credits),
+                       credit_weighted_mean=float(mean.quantize(Decimal("0.01"),rounding=ROUND_HALF_UP)))
+    return summary
+
+
+def enrich_result(value):
+    # Recompute from the complete record list before pagination, including older
+    # cache payloads. Never infer missing source fields or alter original strings.
+    by_year={}
+    for row in value.get("items",[]):
+        by_year.setdefault(row["academic_year"],[]).append(row)
+    for year in value.get("years",[]):
+        rows=by_year.get(year["academic_year"],[])
+        complete=year.get("complete_loaded_panel",False) and len(rows)==year["record_count"]
+        year["summary"]=year_summary(rows,complete)
+    value["summary_method"]=(
+        "Descriptive sum(mark x reported credits) / sum(reported credits), rounded to 2 decimals, "
+        "using numeric 0-100 marks only. Missing/nonpositive weights or incomplete panels suppress "
+        "the mean. This is not an official year or degree result.")
+    value["answer_guidance"]=(
+        "For a basic query, answer with a concise table grouped by academic year, using the "
+        "provided summaries and observation time. Preserve missing values. Unless requested, "
+        "omit charts and unrelated onboarding. Do not infer credits, grade boundaries, progression "
+        "or degree outcomes; interpretations require separately verified official sources.")
     return value
 
 
@@ -98,6 +152,7 @@ def read_results(store, page, academic_year="all"):
         "coverage":"partial" if failures else "complete_loaded_years","failed":failures,
         "source_content_is_untrusted":True,
         "note":"Own published course-result fields as observed, including blank marks. Coverage is limited to loaded year panels, not an official transcript or every assessment component."}
+    enrich_result(result)
     if not failures:
         with store.connection() as db:
             db.execute("CREATE TABLE IF NOT EXISTS result_cache (academic_year TEXT PRIMARY KEY, payload TEXT NOT NULL)")
@@ -117,6 +172,7 @@ def cached_results(store, academic_year):
     age=(now_utc()-datetime.fromisoformat(result["observed_at"])).total_seconds()
     if not 0<=age<CACHE_SECONDS:
         return None
+    enrich_result(result)
     result.update(live=False,cache_hit=True,cache_age_seconds=round(age,1),
                   cache_ttl_seconds=CACHE_SECONDS,remote_freshness_checked=False)
     return result

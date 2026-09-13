@@ -12,7 +12,7 @@ Repeatedly loading the MyEd portal added substantial latency. Direct DOM inspect
 
 - Call `study_results(academic_year="all")` directly for the student's own published course marks, grades, credits, result and sit fields. Use `current` or `YYYY/YY` for a narrower year.
 - Read the labelled loaded year panels together. No screenshots, coordinate clicks, year-tab clicks, form submissions, grade changes or per-course expansion.
-- Return structured rows and dated evidence. Empty or placeholder marks retain their original strings. Missing fields or years report partial coverage; they never prove that results do not exist.
+- Return structured rows and dated evidence. Each year includes locally computed descriptive statistics for observed numeric marks, using reported positive credits. Missing weights or incomplete panels suppress the mean. Original fields remain unchanged; these are not official year, progression or degree calculations. Empty or placeholder marks retain their original strings. Missing fields or years report partial coverage; they never prove that results do not exist.
 - Wait up to 20 seconds inside the initial call. Poll only when its state remains running or queued; a terminal response already includes the result. Larger outputs expose pagination.
 - Reuse a five-minute cache within the individual's private installation. `refresh=True` requests a new school read. Starting an interactive campus login invalidates this cache. Matching active result jobs are reused.
 - Existing `study_read_service` clients can select an academic year in EUCLID Courses. An exact year, all or current in the old query parameter is also recognised. Assessment component navigation remains a separate, incomplete adapter.
@@ -39,7 +39,7 @@ The installed 0.5.2 package was started through the existing WorkBuddy MCP comma
 | Immediate cached results call | 0.015 seconds; one tool call; no browser |
 | Final fresh result text | 4,705 UTF-8 bytes |
 | Original failing UoE path in WorkBuddy log | 31 plugin calls; 48,180 UTF-8 result-text bytes |
-| Tests | 134 passed, including real offline DOM tests |
+| Tests | 144 passed, including real offline DOM tests |
 
 Development fresh-read samples included a 31.062-second, two-call result as well as 10.485-second, one-call results. School/SSO latency is variable; the final installed probe is a measurement, not a guaranteed response time. The original model trial and the repaired direct MCP probe are different acceptance scopes. Billed-token usage remains unmeasured.
 
@@ -47,7 +47,23 @@ Development fresh-read samples included a 31.062-second, two-call result as well
 
 After reconnecting, a real WorkBuddy retry in the existing conversation still called the old MyEd tool, repeated its previous conclusion that historical grades were unsupported, and invoked agent-browser. The MCP process had restarted successfully; the school session remained authenticated. This establishes a client/model routing failure, not a new login failure or a passing model-turn acceptance.
 
-Known MyEd/EUCLID tools now return the current plugin version and the implemented course-results operation, with its exact arguments, in both initial job responses and completed page results. This lets a conversation that remembers the old catalog discover the new operation through tools it already knows. A fallback recipe uses only the existing study_read_service parameters when a client has not refreshed its list of tool names. Generic host initialization instructions alone were insufficient in this observed retry. The new routing hint still requires an actual model-turn retest.
+Known MyEd/EUCLID tools now return the current plugin version and the implemented course-results operation, with its exact arguments, in both initial job responses and completed page results. This lets a conversation that remembers the old catalog discover the new operation through tools it already knows. A fallback recipe uses only the existing study_read_service parameters when a client has not refreshed its list of tool names. Generic host initialization instructions alone were insufficient in this observed retry. The legacy fallback was verified through the existing Chat/Work connector. The fresh-conversation model test below used the new tool directly; following the hint within an old conversation remains unverified.
+
+## Fresh WorkBuddy conversation (2026-09-13)
+
+A new conversation using Hy4 preview with high reasoning discovered and called `study_results` once. The acceptance request specified UoE Companion only and no new browser. It returned all three loaded years and 16 records from a 209-second-old cache. The 13 numeric course marks and grade labels matched the source, the two year means calculated from reported credits were correct, and three placeholder courses remained unscored. No host browser, login prompt, shell or file-edit tool was used in this query turn.
+
+| Actual model-turn measurement | Observed value |
+| --- | --- |
+| UoE result call | 0.167 seconds; one call; cache hit |
+| User request to data arrival | 18.402 seconds |
+| User request to final text | 89.444 seconds |
+| UoE response text | 4,829 UTF-8 bytes |
+| Additional visualizer guide/widget results | 22,015 UTF-8 bytes across two tools |
+
+Retrieval and the numeric year summaries passed this bounded test. Whole-answer quality remained partial: the model added an unrequested chart, personal onboarding, and grading/future-credit interpretations unsupported by the result fields. Therefore 0.167 seconds is not the user's total wait, and the response-byte measurements are not billed-token savings.
+
+The final refinement computes descriptive year summaries in the plugin and includes concise-table guidance in the tool description and every result, including older cache payloads. It preserves missing data and requires separately verified official sources for grading, progression or degree interpretations. No host system prompt, personal memory or unrelated configuration is modified. A further model turn with this refinement has not been verified; reduced total latency and compliance with the guidance are not guaranteed.
 
 ## Upgrade
 

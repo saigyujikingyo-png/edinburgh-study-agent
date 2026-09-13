@@ -23,6 +23,7 @@ mcp = PortableFastMCP("UoE Companion",
     icons=[Icon(src="https://raw.githubusercontent.com/saigyujikingyo-png/edinburgh-study-agent/main/assets/icon.png",
                 mimeType="image/png",sizes=["512x512"])],
     instructions="For connection checks call study_status once and reply briefly; do not inspect host files or start personal onboarding. For your own marks/grades/history use study_results(academic_year='all') directly; no service discovery or repeated section guesses. "
+    "For basic result queries, use a concise year-grouped table and the provided descriptive summaries; charts and unrelated onboarding only when requested. Do not infer missing credits, grade boundaries or degree outcomes. "
     "A returned terminal state already contains results; poll only queued/running jobs. "
     "For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
     "Never use screenshots or coordinate clicks. Download files with study_download_files without Save As. For EUCLID, events, internships and other resources use study_services and study_read_service; organise them with study_collect and local tasks. Read verified documents using study_read_file. "
@@ -212,7 +213,7 @@ def study_services(query: str = "", detail: Literal["compact","full"] = "compact
 
 @mcp.tool(annotations=WEB, structured_output=False)
 def study_results(academic_year: str = "all", refresh: bool = False) -> CallToolResult:
-    """Read your own EUCLID course marks, grades and academic history (历年成绩) in one call. academic_year: all (default), current or YYYY/YY. Returns dated structured results across loaded year panels, including blank marks. Reuses a 5-minute cache; refresh=True checks school now. Waits up to 20s internally; only poll study_school_job if still running. This is read-only school access, not grade editing or an official transcript."""
+    """Read your own EUCLID course marks, grades and academic history (历年成绩) in one call. academic_year: all (default), current or YYYY/YY. Returns dated records and descriptive year summaries, preserving blank marks. Default to a concise year-grouped table; no charts or unrelated onboarding unless requested. Do not infer missing credits, grading rules or degree outcomes. Reuses a 5-minute cache; refresh=True checks school now. Waits up to 20s internally; only poll study_school_job if still running. This is read-only school access, not grade editing or an official transcript."""
     from .results import validate_year
     validate_year(academic_year)
     value=school.start_job(store(),"results",{"academic_year":academic_year,"refresh":refresh})
