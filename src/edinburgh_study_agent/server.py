@@ -387,7 +387,7 @@ def study_materials(course: str = "", query: str = "", item_id: str | None = Non
 @mcp.tool(annotations=WEB, structured_output=False)
 def study_messages(view: Literal["activity","inboxes"] = "activity", course: str = "",
                    query: str = "", refresh: bool = False, offset: int = 0, limit: int = 20) -> CallToolResult:
-    """Read Learn recent updates/消息/announcements (activity) or loaded course inbox unread counters (inboxes). Filter course/title text, 2-minute cache, refresh checks school. Not email or full conversation-body access; zero unread does not mean no history. Dates preserve visible source text. Waits 20s internally; poll only running jobs. Page with next_offset. No new host browser or service guessing."""
+    """Read Learn recent updates/消息/announcements (activity) or loaded course inbox unread counters (inboxes). Filter course/title text, 2-minute cache, refresh checks school. Full Learn conversation-body access is not yet implemented. University email belongs in Outlook, outside this plugin scope. Zero unread does not mean no history. Dates preserve visible source text. Waits 20s internally; poll only running jobs. Page with next_offset. No new host browser or service guessing."""
     from . import learn_updates
     args=dict(view=view,course=course,query=query,refresh=refresh,offset=offset,limit=limit)
     learn_updates.validate(args)

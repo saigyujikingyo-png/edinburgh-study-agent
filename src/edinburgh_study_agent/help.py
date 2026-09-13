@@ -9,7 +9,7 @@ GUIDANCE = {
     "Use study_home for a cached overview; use study_live_courses for current Learn membership and EUCLID Courses for formal enrolments.",
     "For your schedule use study_timetable(semester=1/2). It reads the personal Timetabler export and groups exact dates. A course PDF item_id instead returns parsed week/day cells. No host filesystem, PDF library install or parser script is needed.",
     "Use study_materials(course=...,query=...) to find files; operation=read/download handles a unique observed item directly. Matches can be cached with visible timestamps. refresh=True checks the source; no manual Save As.",
-    "Use study_messages for recent Learn activity or course inbox unread counters. Full conversation history and email are not covered. Zero unread is not an empty inbox.",
+    "Use study_messages for recent Learn activity or course inbox unread counters. Full Learn conversation history is not yet covered. University email belongs in Outlook and is outside this plugin scope. Zero unread is not an empty inbox.",
     "Use study_events for the supported official academic dates/public event feeds. Source coverage is explicit; do not describe it as all University events.",
     "Read saved files using study_read_file with next_offset; use study_read_resource(refresh=False) to reuse verified copies.",
     "Use study_agenda for cached classes/deadlines and active local tasks. Refresh study_timetable for personal classes; import an official ICS for other calendars.",

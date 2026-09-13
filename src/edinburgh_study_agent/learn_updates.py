@@ -85,7 +85,7 @@ def read(store,page,args,progress):
             coverage="partial",authentication="authenticated",text=text[:100000],items=items))
     data=dict(items=result,source_url=url,observed_at=stamp.isoformat(),coverage="partial",
         scope="Loaded Learn activity stream only; may include new materials, announcements and other updates. Published date text retains the page display; timezone is not inferred."
-          if view=="activity" else "Loaded course inbox overview only; unread counts are not message history. Reading conversation bodies and email is not implemented.",
+          if view=="activity" else "Loaded course inbox overview only; unread counts are not message history. Reading Learn conversation bodies is not yet implemented. University email is handled through Outlook, outside this plugin scope.",
         view=view)
     workflow_cache.put(store,"learn_updates",view,data)
     school.mark_session(store,True)

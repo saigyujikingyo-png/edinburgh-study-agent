@@ -22,9 +22,10 @@ CAPABILITIES = {
         "Coursework submission, marking, grade changes, attendance or bulk student administration",
         "Job applications, event booking, enrolment changes or message sending",
         "Complete exam/allocation coverage, scheduled background sync and remote calendar writes",
-        "Full Learn message conversation bodies, university email and university-wide Events App aggregation",
+        "Full Learn message conversation bodies and university-wide Events App aggregation",
         "OCR, lecture-video transcription and all external/LTI providers",
     ],
+    "out_of_scope": ["University email and mailbox workflows; handled through Outlook"],
     "unverified": [
         "Full Claude, WorkBuddy and DeepSeek model-turn acceptance; configuration/protocol/bridge tests are narrower",
         "Native-speaker review of every catalog translation and automatic translation of all source documents",

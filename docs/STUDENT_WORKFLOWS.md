@@ -9,12 +9,14 @@ The WorkBuddy trial spent minutes locating local files, setting up PDF libraries
 | Personal classes this semester | `study_timetable` | Published personal Timetabler activities, by academic year, semester and dates. Weekly counts/date spans are computed before detail pagination. The summary is not a continuous attendance span or a complete exam/deadline calendar. |
 | A course PDF timetable | `study_timetable(item_id=..., semester=1)` | Automatically download an observed file if needed, verify its checksum, then read labelled week/day cells with the existing pypdf dependency. Cross-page continuation and mid-page semester changes are supported. Course grids do not prove personal group allocations; week labels are not converted into invented calendar dates. |
 | Find/read/download materials | `study_materials` | Name/id resolution, dated cached search, bounded live folder search and verified file reading/download. Ambiguous matches return choices. A known parsed PDF timetable can be found even when its filename does not say “timetable”. |
-| Messages and updates | `study_messages` | Loaded Learn activity rows and loaded course inbox unread counters. Full conversation bodies, email and exhaustive message history are not implemented. Zero unread does not mean no history. |
+| Messages and updates | `study_messages` | Loaded Learn activity rows and loaded course inbox unread counters. Full Learn conversation bodies and exhaustive message history are not implemented. Zero unread does not mean no history. |
 | Events and academic dates | `study_events` | Official standard academic calendar and Physics & Astronomy public event feed, each with separate freshness/failure. This is not university-wide activity coverage. |
 
 Sources: [Timetabler](https://timetabler.is.ed.ac.uk/), [Learn](https://www.learn.ed.ac.uk/), [academic dates](https://semester-dates.ed.ac.uk/), [Physics & Astronomy events](https://www.ph.ed.ac.uk/events/calendar). The university also links a [student Events App](https://www.ed.ac.uk/new-students/get-started/top-tasks/download-our-events-app); its full aggregation remains unimplemented. Standard academic dates have programme-specific exceptions.
 
 PDF table support is limited to upright, labelled weekly grids with detectable ruled columns. Unsupported layouts return partial coverage or an explicit failure. No OCR or universal PDF-layout accuracy is claimed.
+
+University email and mailbox workflows are handled through Outlook and are outside the development scope of UoE Companion. The messages workflow covers Learn activity, notifications and course messaging only, subject to the implementation limits above.
 
 ## Runtime changes
 
