@@ -184,3 +184,19 @@ def test_agenda_sql_inputs_and_empty_count_row(store):
     with pytest.raises(ValueError):
         agenda.window(store,"2030-01-01","2030-01-07",kind="event' OR 1=1 --")
     assert store.status()["counts"]=={}
+
+
+def test_host_config_launches_selected_virtual_environment(tmp_path):
+    import os
+    import subprocess
+    import venv
+    from pathlib import Path
+    runtime = tmp_path / "selected runtime"
+    venv.EnvBuilder(with_pip=False, symlinks=os.name != "nt").create(runtime)
+    python = runtime / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    config = hosts.server_config(python, tmp_path / "private")
+    result = subprocess.run(
+        [config["command"], "-c", "import sys; print(sys.prefix)"],
+        check=True, capture_output=True, text=True,
+    )
+    assert Path(result.stdout.strip()).resolve() == runtime.resolve()

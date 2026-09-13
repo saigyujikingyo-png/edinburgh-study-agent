@@ -40,7 +40,7 @@ Reproduce isolated MCP measurements with `scripts/benchmark_student.py`. Result 
 
 The regression suite, original full-profile stdio smoke check and new daily-profile calls cover schema validation, advanced dispatch, cache reuse, full PDF detail recovery, configuration preservation and rollback. Windows installation tests exercise the bundled interpreter; the source tests additionally cover supported Python versions in CI.
 
-Local regression result: 181 passed. The full-profile smoke check retained 36 tools; the daily profile validated actual advanced-tool discovery, a synthetic task roundtrip, rejection of invalid estimates and rejection of legacy capture dispatch.
+Local regression result: 182 passed, including the mainline virtual-environment launch regression. The full-profile smoke check retained 36 tools; the daily profile validated actual advanced-tool discovery, a synthetic task roundtrip, rejection of invalid estimates and rejection of legacy capture dispatch.
 
 These checks do not establish a new WorkBuddy/Claude/DeepSeek/Codex model conversation, each Chat/local Work/cloud Work workflow, a different student's account, or end-to-end artifact attachment delivery. The previous WorkBuddy model follow-up was deferred by the user. There is no GPT-5.6 Terra max model run or measured input/cached/output/reasoning-token bill for this release. Those remain separate acceptance work.
 
