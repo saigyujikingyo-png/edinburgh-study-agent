@@ -206,7 +206,12 @@ def install(bundle, home, selected=(), *, config_paths=None, progress=lambda val
                 if (path.read_bytes() if path.exists() else None) != original[path]:
                     raise ValueError("A client configuration changed during installation; retry.")
                 progress("Connecting " + host)
-                receipts.append({"host": host, **merge_config(path, config)})
+                existing=json.loads(original[path].decode("utf-8-sig")) if original[path] else {}
+                managed=[entry for entry in existing.get("mcpServers",{}).values()
+                         if isinstance(entry,dict) and entry.get("args")==["-m","edinburgh_study_agent.server"]]
+                locale=managed[0].get("env",{}).get("UOE_LOCALE","auto") if len(managed)==1 else "auto"
+                host_config=server_config(runtime / "Scripts/python.exe",home,locale=locale,profile="daily")
+                receipts.append({"host": host, **merge_config(path, host_config)})
                 applied[path] = path.read_bytes()
             # Generic documents are private; existing configurations and Work identity are untouched.
             connections = home / "connections" / ("setup-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))

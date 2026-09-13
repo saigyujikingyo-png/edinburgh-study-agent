@@ -31,7 +31,9 @@ def test_new_install_repeat_and_upgrade_preserve_private_data(tmp_path):
     (home / "school/profile").mkdir(parents=True)
     (home / "school/profile/session").write_bytes(b"private session sentinel")
     host = tmp_path / "host configuration.json"
-    host.write_text(json.dumps({"mcpServers": {"other": {"command": "existing"}}, "theme": "dark"}))
+    host.write_text(json.dumps({"mcpServers": {"other": {"command": "existing"},
+        "uoe-companion":{"command":"prior-python","args":["-m","edinburgh_study_agent.server"],
+                         "disabled":True,"env":{"UOE_LOCALE":"fr","CUSTOM_OPTION":"keep"}}}, "theme": "dark"}))
     first = setup_core.install(payload, home, ["workbuddy"], config_paths={"workbuddy": host}, doctor=doctor)
     assert first["check"]["tools"] == 13 and not first["unchanged_runtime"]
     installed = home / "runtime/Scripts/python.exe"
@@ -42,6 +44,9 @@ def test_new_install_repeat_and_upgrade_preserve_private_data(tmp_path):
     assert host.read_bytes() == configured
     assert json.loads(configured)["mcpServers"]["other"] == {"command": "existing"}
     assert json.loads(configured)["mcpServers"]["uoe-companion"]["env"]["UOE_TOOL_PROFILE"] == "daily"
+    assert json.loads(configured)["mcpServers"]["uoe-companion"]["env"]["UOE_LOCALE"] == "fr"
+    assert json.loads(configured)["mcpServers"]["uoe-companion"]["env"]["CUSTOM_OPTION"] == "keep"
+    assert json.loads(configured)["mcpServers"]["uoe-companion"]["disabled"]
     assert (home / "study.sqlite3").read_bytes() == b"private sentinel"
     assert (home / "school/profile/session").read_bytes() == b"private session sentinel"
 
