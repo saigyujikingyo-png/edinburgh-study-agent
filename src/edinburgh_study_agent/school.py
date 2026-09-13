@@ -199,7 +199,11 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
         record.update(state="failed",progress="Could not start the local school worker.")
         write_json(path, record)
         raise RuntimeError("Could not start the local school worker.") from None
-    return read_job(store, job_id)
+    value=read_job(store, job_id)
+    if action=="myed" or (action=="service" and arguments.get("service_id") in {"myed","euclid"}):
+        from .results import workflow_hint
+        value.update(workflow_hint())
+    return value
 
 
 @contextmanager

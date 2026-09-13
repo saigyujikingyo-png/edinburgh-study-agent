@@ -127,3 +127,16 @@ def invalidate_cache(store):
     with store.connection() as db:
         if db.execute("SELECT 1 FROM sqlite_master WHERE name='result_cache'").fetchone():
             db.execute("DELETE FROM result_cache")
+
+
+def workflow_hint():
+    # Existing conversations may remember the old catalog. Return discovery
+    # metadata on their known portal tools, rather than relying on initialize
+    # instructions or assuming that a host re-injects every changed schema.
+    from . import __version__
+    return {"plugin_version":__version__,"host_browser_required":False,
+        "available_workflows":{"course_results":{"tool":"study_results",
+            "arguments":{"academic_year":"all"},
+            "status":"implemented",
+            "if_tool_not_listed":{"tool":"study_read_service","arguments":{"service_id":"euclid","section":"Courses","query":"all","max_pages":1}},
+            "scope":"Own published course marks/grades across loaded academic years. No year-tab clicks, HEAR preview or host browser needed."}}}

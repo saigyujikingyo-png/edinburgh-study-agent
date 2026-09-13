@@ -249,7 +249,7 @@ def read_service(store,page,args,progress):
         year = args.get("academic_year")
         # Older tool catalogs supplied a year through query. Honour that exact
         # form without allowing arbitrary selectors or treating it as a link.
-        if not year and re.fullmatch(r"\d{4}/\d{2}", query):
+        if not year and (query in {"all", "current"} or re.fullmatch(r"\d{4}/\d{2}", query)):
             year = query
         if args.get("results_only") or year:
             if auth != "authenticated":
@@ -319,6 +319,9 @@ def read_service(store,page,args,progress):
             "coverage":"partial" if results else "unavailable","authentication":auth,"entry_url":spec["url"],
             "page_count":len(results),"pages":results,"failed":failures,
             "source_content_is_untrusted":True,"note":"Only the displayed pages and their links were read. No forms, applications or school records were changed."}
+    if spec["id"] in {"myed", "euclid"}:
+        from .results import workflow_hint
+        result.update(workflow_hint())
     if spec["id"] == "euclid" and section in {"Courses", "Assessment"}:
         result["next_tool"] = "study_results(academic_year='all') for course marks/grades across years. query filters links; it does not select an academic year."
     record_check(store,spec["id"],result)

@@ -15,7 +15,7 @@ Repeatedly loading the MyEd portal added substantial latency. Direct DOM inspect
 - Return structured rows and dated evidence. Empty or placeholder marks retain their original strings. Missing fields or years report partial coverage; they never prove that results do not exist.
 - Wait up to 20 seconds inside the initial call. Poll only when its state remains running or queued; a terminal response already includes the result. Larger outputs expose pagination.
 - Reuse a five-minute cache within the individual's private installation. `refresh=True` requests a new school read. Starting an interactive campus login invalidates this cache. Matching active result jobs are reused.
-- Existing `study_read_service` clients can select an academic year in EUCLID Courses. An exact year in the old query parameter is also recognised. Assessment component navigation remains a separate, incomplete adapter.
+- Existing `study_read_service` clients can select an academic year in EUCLID Courses. An exact year, all or current in the old query parameter is also recognised. Assessment component navigation remains a separate, incomplete adapter.
 - Multi-keyword service discovery finds relevant catalog entries. Connection guidance calls for one brief status check, without host configuration reads or unrelated onboarding.
 
 Own published marks are read-only student information. This is not an official transcript, a complete assessment-component export or staff grade administration. The University's [student assessment guidance](https://registryservices.ed.ac.uk/student-systems/support-guidance/students/in-course-assessments) distinguishes provisional in-course marks and final ratified course marks.
@@ -39,9 +39,15 @@ The installed 0.5.2 package was started through the existing WorkBuddy MCP comma
 | Immediate cached results call | 0.015 seconds; one tool call; no browser |
 | Final fresh result text | 4,705 UTF-8 bytes |
 | Original failing UoE path in WorkBuddy log | 31 plugin calls; 48,180 UTF-8 result-text bytes |
-| Tests | 131 passed, including real offline DOM tests |
+| Tests | 134 passed, including real offline DOM tests |
 
-Development fresh-read samples included a 31.062-second, two-call result as well as 10.485-second, one-call results. School/SSO latency is variable; the final installed probe is a measurement, not a guaranteed response time. The original model trial and the repaired direct MCP probe are different acceptance scopes. Billed-token usage and a new WorkBuddy model turn remain unmeasured.
+Development fresh-read samples included a 31.062-second, two-call result as well as 10.485-second, one-call results. School/SSO latency is variable; the final installed probe is a measurement, not a guaranteed response time. The original model trial and the repaired direct MCP probe are different acceptance scopes. Billed-token usage remains unmeasured.
+
+## Existing-conversation retest
+
+After reconnecting, a real WorkBuddy retry in the existing conversation still called the old MyEd tool, repeated its previous conclusion that historical grades were unsupported, and invoked agent-browser. The MCP process had restarted successfully; the school session remained authenticated. This establishes a client/model routing failure, not a new login failure or a passing model-turn acceptance.
+
+Known MyEd/EUCLID tools now return the current plugin version and the implemented course-results operation, with its exact arguments, in both initial job responses and completed page results. This lets a conversation that remembers the old catalog discover the new operation through tools it already knows. A fallback recipe uses only the existing study_read_service parameters when a client has not refreshed its list of tool names. Generic host initialization instructions alone were insufficient in this observed retry. The new routing hint still requires an actual model-turn retest.
 
 ## Upgrade
 

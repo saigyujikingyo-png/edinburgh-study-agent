@@ -150,7 +150,8 @@ def test_service_keyword_list_finds_results_instead_of_empty_directory(tmp_path)
 
 
 @pytest.mark.parametrize("direct_fails",[False,True])
-def test_euclid_uses_fixed_entry_with_one_myed_fallback(tmp_path,monkeypatch,direct_fails):
+@pytest.mark.parametrize("legacy_query",[False,True])
+def test_euclid_uses_fixed_entry_with_one_myed_fallback(tmp_path,monkeypatch,direct_fails,legacy_query):
     from edinburgh_study_agent.services import service
     calls=[]
     class Control:
@@ -172,8 +173,19 @@ def test_euclid_uses_fixed_entry_with_one_myed_fallback(tmp_path,monkeypatch,dir
     monkeypatch.setattr(portal,"select_read_link",lambda page,label:(page,True))
     monkeypatch.setattr(results,"read_results",lambda store,page,year:{"academic_year":year,"coverage":"complete_loaded_years"})
     value=portal.read_service(Store(tmp_path),PortalPage(),
-        {"service_id":"euclid","section":"Courses","results_only":True},lambda x:None)
+        {"service_id":"euclid","section":"Courses","results_only":not legacy_query,"query":"all" if legacy_query else ""},lambda x:None)
     assert value["academic_year"]=="all"
     expected=[portal.EUCLID_ENTRY]
     if direct_fails: expected += [service("euclid")["url"],portal.EUCLID_ENTRY]
     assert calls==expected
+
+
+def test_old_portal_call_advertises_results_without_an_extra_catalog_roundtrip(tmp_path,monkeypatch):
+    store=Store(tmp_path)
+    monkeypatch.setattr(school.subprocess,"Popen",lambda *a,**kw:object())
+    queued=school.start_job(store,"myed")
+    hint=queued["available_workflows"]["course_results"]
+    assert queued["plugin_version"]=="0.5.2"
+    assert queued["host_browser_required"] is False
+    assert hint["tool"]=="study_results" and hint["arguments"]=={"academic_year":"all"}
+    assert hint["status"]=="implemented"
