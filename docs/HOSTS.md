@@ -73,7 +73,7 @@ References: [official MCP client](https://github.com/deepseek-ai/deepseek-harnes
 
 ## Student tools and language
 
-New generated local-host entries use `UOE_TOOL_PROFILE=student`: 29 tools for students. It hides the three legacy developer tools `study_capture`, `study_download_resource` and `study_route`. `full` exposes 32 tools. Version 0.5.2 adds `study_results` to both profiles. Existing Work connections default to `full` for compatibility. Server descriptions and on-demand help apply without installing the Codex skill.
+New generated local-host entries use `UOE_TOOL_PROFILE=student`: 33 tools for students. It hides the three legacy developer tools `study_capture`, `study_download_resource` and `study_route`. `full` exposes 36 tools. Version 0.6.0 adds four basic workflow tools to both profiles, retaining existing tool names. Existing Work connections default to `full` for compatibility. Server descriptions and on-demand help apply without installing the Codex skill.
 
 Ask in your preferred language, for example “Show my study agenda” or “显示本周学习日程”. Use `study_preferences(locale="auto")` to follow each request's language. See [language scope](LANGUAGES.md).
 
@@ -91,3 +91,5 @@ Ask in your preferred language, for example “Show my study agenda” or “显
 | Generic MCP | Real stdio initialization/list/call checks for both tool profiles | Individual clients and model behavior require their own acceptance |
 
 Configuration acceptance, protocol acceptance, official-bridge acceptance and a real model turn are separate claims. No other user's account is validated by the developer's result.
+
+Version 0.6.0 student workflow backend/protocol measurements are recorded in [STUDENT_WORKFLOWS.md](STUDENT_WORKFLOWS.md). They do not certify a new WorkBuddy model turn or the new tools in every Chat/Work mode. Refresh the host MCP catalog once after upgrading; reuse the same entry, private data and campus login.

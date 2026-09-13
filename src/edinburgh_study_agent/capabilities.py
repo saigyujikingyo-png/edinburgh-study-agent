@@ -3,7 +3,12 @@ CAPABILITIES = {
     "implemented": [
         "Learn course/content discovery, verified downloads and document text reading",
         "Own EUCLID course marks and grades across loaded academic years; read-only, not an official transcript",
-        "Supported MyEd/EUCLID student pages and Timetabler displayed-page reading",
+        "Supported MyEd/EUCLID student pages",
+        "Personal Timetabler published-activity export, academic year/semester filters, concise weekly patterns and dated cache",
+        "Course timetable PDF week/day cells with cross-page continuation and checksum-bound extraction cache",
+        "One-call course material search, verified download and text reading; bounded folder traversal",
+        "Loaded Learn activity updates and course inbox unread counters",
+        "Structured official standard academic dates and Physics & Astronomy public events; explicit limited coverage",
         "Bounded official careers/events pages and MyCareerHub links",
         "Dated evidence, collections, tags, local tasks and draft plans",
         "Unified cached student agenda, linked local tasks and independent display timezone",
@@ -16,7 +21,8 @@ CAPABILITIES = {
         "Shared hosted multi-user service or one public Work connection for all users",
         "Coursework submission, marking, grade changes, attendance or bulk student administration",
         "Job applications, event booking, enrolment changes or message sending",
-        "Complete structured timetable sync, automatic refresh and remote calendar writes",
+        "Complete exam/allocation coverage, scheduled background sync and remote calendar writes",
+        "Full Learn message conversation bodies, university email and university-wide Events App aggregation",
         "OCR, lecture-video transcription and all external/LTI providers",
     ],
     "unverified": [

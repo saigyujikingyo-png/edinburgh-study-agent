@@ -8,7 +8,7 @@ Manage University of Edinburgh resources and personal workflows through natural 
 
 [下载 0.5.1](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.5.1) · [多智能体接入 / Agent setup](docs/HOSTS.md) · [多语言 / Languages](docs/LANGUAGES.md) · [分享与安装](docs/SHARING.md) · [聊天 / Work 连接](docs/WORK_SETUP.md) · [性能](docs/PERFORMANCE.md) · [验收范围](docs/WORK_ACCEPTANCE.md)
 
-Version 0.5.2 adds read-only historical course results through `study_results`, a five-minute dated cache and a faster EUCLID SSO entry. See the [WorkBuddy diagnosis and verification limits](docs/WORKBUDDY_RESULTS.md). The latest published release link above remains separate from this source version.
+Version 0.6.0 adds direct timetable, materials, Learn updates and public event workflows. Common requests use deterministic parsing and private caches instead of asking the host to browse folders or write scripts. See the [student workflow coverage and verification](docs/STUDENT_WORKFLOWS.md), plus the earlier [WorkBuddy grade diagnosis](docs/WORKBUDDY_RESULTS.md). The latest published release link above remains separate from this source version.
 
 ## 能做什么
 

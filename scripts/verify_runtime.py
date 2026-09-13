@@ -24,7 +24,7 @@ async def main():
             await session.initialize()
             catalog = await session.list_tools()
             report["tools"] = [t.name for t in catalog.tools]
-            assert len(catalog.tools) == 32
+            assert len(catalog.tools) == 36
             captures = []
             if args.observations:
                 for obs in json.loads(args.observations.read_text(encoding="utf-8")):

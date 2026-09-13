@@ -9,6 +9,15 @@ Use the user's language when locale=auto, otherwise honour study_preferences. Co
 
 ## Efficient routing
 
+For basic requests, use the direct workflow first:
+- `study_timetable(semester=1)` for personal classes; `item_id` reads a course timetable PDF into week/day cells.
+- `study_materials` finds, reads or downloads course files in one operation.
+- `study_messages` reads recent Learn activity or course inbox unread counters.
+- `study_events` reads supported public dates/events with explicit source coverage.
+
+Return a brief useful table/list. Do not install document libraries, inspect host download folders, write parsing scripts or build a website for a basic query. Timetable APIs preserve actual dates; PDF week grids do not identify personal groups or imply calendar dates.
+
+
 Start with the tool that answers the request; do not always call status, directory and search first. Use `study_status(include_capabilities=True)` only when feature boundaries are requested. Compact results are default. Use `next_offset` to page searches, collections and job items; request `detail="full"` only for needed details. Never treat the first page as the complete result set.
 
 Poll school jobs with the default `wait_seconds=20` (maximum 25), optionally passing `if_updated_at` from the previous result. Unchanged progress does not need narration or extra status calls. Continue until a terminal state; fetch remaining pages if needed. Read document/evidence text in relevant 6000-character pages.
@@ -21,7 +30,7 @@ Use `study_help(topic="student"|"hosts"|"languages"|"capabilities")` for on-dema
 
 `study_services(query,locale)` searches a ten-language catalog; it does not semantically translate live or cached course content. Temporary `locale` overrides on services/agenda/help do not change persistent preferences. Report explicit catalog fallback when relevant; host-generated explanations may use any language.
 
-`study_agenda` combines cached classes, deadlines and active local tasks. Page with next_offset; show unknown_dates and dated coverage. London dates define the requested range, display_timezone only changes added display timestamps. Date-only deadlines retain their day without an invented time. Local done is not university submission. Use imported official ICS data for structured timetable planning; displayed timetable text alone is insufficient.
+`study_agenda` combines cached classes, deadlines and active local tasks. Page with next_offset; show unknown_dates and dated coverage. London dates define the requested range, display_timezone only changes added display timestamps. Date-only deadlines retain their day without an invented time. Local done is not university submission. Refresh study_timetable to import the current personal activity snapshot for planning. Official ICS imports remain available for other calendars.
 
 New local-host configs use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
 

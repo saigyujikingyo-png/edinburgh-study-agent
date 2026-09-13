@@ -185,7 +185,7 @@ def test_old_portal_call_advertises_results_without_an_extra_catalog_roundtrip(t
     monkeypatch.setattr(school.subprocess,"Popen",lambda *a,**kw:object())
     queued=school.start_job(store,"myed")
     hint=queued["available_workflows"]["course_results"]
-    assert queued["plugin_version"]=="0.5.2"
+    assert queued["plugin_version"]=="0.6.0"
     assert queued["host_browser_required"] is False
     assert hint["tool"]=="study_results" and hint["arguments"]=={"academic_year":"all"}
     assert hint["status"]=="implemented"
@@ -239,3 +239,16 @@ def test_old_cache_gets_current_summaries_before_response_pagination(tmp_path,mo
     assert actual["years"][1]["summary"]["credit_weighted_mean"]==0
     assert len(actual["items"])==100
     assert actual["answer_guidance"] and actual["summary_method"]
+
+
+def test_learn_activity_and_messages_shell_is_not_misclassified_as_logged_out(browser_page):
+    page=browser_page
+    html='<main>Messages</main><nav><a href="/ultra/profile">Profile</a><a href="/ultra/course">Courses</a><a href="/ultra/messages">Messages</a></nav>'
+    page.goto("https://www.learn.ed.ac.uk/ultra/messages")
+    page.set_content(html)
+    assert school.authenticated(page)
+    page.set_content(html+'<input type="password">')
+    assert not school.authenticated(page)
+    page.goto("https://outside.example/")
+    page.set_content(html)
+    assert not school.authenticated(page)
