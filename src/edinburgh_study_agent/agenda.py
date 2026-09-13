@@ -14,6 +14,9 @@ WITH records AS (
  json_extract(payload,'$.due_at') AS due_at,json_extract(payload,'$.due_date') AS due_date,
  json_extract(payload,'$.starts_at') AS starts_at,json_extract(payload,'$.ends_at') AS ends_at
  FROM items WHERE kind IN ('event','assignment') AND (? IS NULL OR kind=?)
+ AND (native_id NOT LIKE 'timetabler:%' OR julianday(observed_at)>=COALESCE(
+ (SELECT MAX(julianday(observed_at)) FROM observations
+ WHERE source='timetable' AND scope='Personal Timetabler activity export snapshot'),0))
  UNION ALL
  SELECT t.id,'task',t.payload,'local',json_extract(t.payload,'$.updated_at'),NULL,1,
  json_extract(t.payload,'$.status'),
@@ -81,5 +84,5 @@ def agenda(store, start=None, end=None, limit=20, offset=0, locale=None, display
     value.update(start=first.isoformat(),end=last.isoformat(),presentation=view,
         source_dates_unchanged=True,range_timezone="Europe/London",
         note="Cached events and deadlines in this London-date range, plus active local tasks and records with unknown dates. No matches does not prove an empty schedule. Local done does not mean submitted. Date-only deadlines have no inferred time.",
-        refresh_tools=["study_live_resources","study_read_service","study_import_calendar"])
+        refresh_tools=["study_timetable","study_messages","study_live_resources","study_import_calendar"])
     return value

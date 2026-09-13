@@ -7,7 +7,6 @@ from typing import Literal, Annotated
 from pydantic import Field
 from .protocol import PortableFastMCP
 from mcp.types import CallToolResult, TextContent, ToolAnnotations, Icon
-from .calendar_io import import_calendar, export_calendar
 from .downloads import download_resource, list_downloads
 from .models import Kind, Observation, Source
 from .planner import build_plan
@@ -19,10 +18,15 @@ from .responses import compact, page_job
 from . import localization, agenda, help as study_guidance
 
 mcp = PortableFastMCP("UoE Companion",
+    log_level="WARNING",
     website_url="https://github.com/saigyujikingyo-png/edinburgh-study-agent",
     icons=[Icon(src="https://raw.githubusercontent.com/saigyujikingyo-png/edinburgh-study-agent/main/assets/icon.png",
                 mimeType="image/png",sizes=["512x512"])],
-    instructions="For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
+    instructions="For connection checks call study_status once and reply briefly; do not inspect host files or start personal onboarding. For your own marks/grades/history use study_results(academic_year='all') directly; no service discovery or repeated section guesses. "
+    "For basic result queries, use a concise year-grouped table and the provided descriptive summaries; charts and unrelated onboarding only when requested. Do not infer missing credits, grade boundaries or degree outcomes. "
+    "A returned terminal state already contains results; poll only queued/running jobs. "
+    "For schedules use study_timetable directly (including semester or a PDF item_id); materials use study_materials, Learn updates/unread counters use study_messages, public dates/events use study_events. These return ready-to-use data with internal caching. Do not inspect host files, install PDF tools, write parsers or build a website for basic queries. "
+    "For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
     "Never use screenshots or coordinate clicks. Download files with study_download_files without Save As. For EUCLID, events, internships and other resources use study_services and study_read_service; organise them with study_collect and local tasks. Read verified documents using study_read_file. "
     "These tools automate supported school DOM pages, store dated evidence and tasks, and download verified files; no registered university REST integration. "
     "Compact responses are default; use next_offset to page and detail=full only when needed. study_school_job waits up to 20 seconds; do not rapid-poll. "
@@ -50,11 +54,17 @@ def result(value: dict, detail: str = "compact") -> CallToolResult:
 
 @mcp.tool(annotations=READ, structured_output=False)
 def study_status(include_capabilities: bool = False) -> CallToolResult:
-    """Read cache freshness and previous authentication observations. Set include_capabilities for implemented, missing and unverified features."""
+    """Check the UoE connection with this single call, then briefly confirm status; no host config inspection or personal onboarding needed. Read cache freshness and previous authentication observations. Set include_capabilities for implemented, missing and unverified features."""
     value=store().status()
     value["audience"]="students"
     value["tool_profile"]=TOOL_PROFILE
+    value["basic_workflows"]={"schedules":"study_timetable","course_files":"study_materials",
+        "learn_updates_and_unread":"study_messages","public_dates_events":"study_events",
+        "older_chat_work_catalog":"study_read_service: timetable + query='semester 1'; events for public dates; learn + query='activity' or 'inboxes'. Timetable item_id reads a course PDF."}
     value["preferences"]=localization.preferences(store())["preferences"]
+    if TOOL_PROFILE=="daily":
+        value["basic_workflows"].pop("older_chat_work_catalog",None)
+        value["basic_workflows"]["advanced_operations"]="study_more"
     if include_capabilities:
         from .capabilities import CAPABILITIES
         value["feature_status"]=CAPABILITIES
@@ -137,11 +147,14 @@ def study_import_calendar(file_path: str, source: Source, source_url: str, start
                           semantics: Literal["events", "deadlines"] = "events") -> CallToolResult:
     """Import a local .ics export in a bounded inclusive date range with recurrence/exceptions.
     source_url is the content page, never a secret subscription URL. Use deadlines only for Learn due-date feeds."""
-    return result(import_calendar(store(), file_path, source, source_url, start, end, semantics))
+    from .calendar_io import import_calendar
+    return result(import_calendar(store(), file_path, source_url=source_url, source=source,
+                                  start=start, end=end, semantics=semantics))
 
 @mcp.tool(annotations=WRITE, structured_output=False)
 def study_export_calendar(start: str, end: str, filename: str = "edinburgh-study.ics") -> CallToolResult:
     """Write observed deadline/event records to a local .ics file. Does not publish or subscribe any calendar."""
+    from .calendar_io import export_calendar
     return result(export_calendar(store(), start, end, filename))
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True), structured_output=False)
@@ -209,16 +222,36 @@ def study_services(query: str = "", detail: Literal["compact","full"] = "compact
     return result(services.directory(store(), query, locale),detail)
 
 @mcp.tool(annotations=WEB, structured_output=False)
+def study_results(academic_year: str = "all", refresh: bool = False) -> CallToolResult:
+    """Read your own EUCLID course marks, grades and academic history (历年成绩) in one call. academic_year: all (default), current or YYYY/YY. Returns dated records and descriptive year summaries, preserving blank marks. Default to a concise year-grouped table; no charts or unrelated onboarding unless requested. Do not infer missing credits, grading rules or degree outcomes. Reuses a 5-minute cache; refresh=True checks school now. Waits up to 20s internally; only poll study_school_job if still running. This is read-only school access, not grade editing or an official transcript."""
+    from .results import validate_year
+    validate_year(academic_year)
+    value=school.start_job(store(),"results",{"academic_year":academic_year,"refresh":refresh})
+    if value["state"] not in school.TERMINAL:
+        value=school.wait_job(store(),value["job_id"],20)
+    return result(page_job(value,0,100))
+
+
+@mcp.tool(annotations=WEB, structured_output=False)
 def study_read_service(service_id: str, item_id: str | None = None, query: str = "",
-                       max_pages: int = 3, section: Literal["Programme", "Courses", "Assessment", "Documents", "Progression & awards", "Scholarships and funding", "Personal details", "Immigration details"] | None = None) -> CallToolResult:
-    """Read a school service through the plugin-owned SSO session, returning a job_id to poll. Use service ids from study_services. Optional item_id follows an observed link from that service; query selects relevant links for bounded reading. For formal enrolments use service_id=euclid and section=Courses. The section enum lists observed read-only EUCLID labels. Captures text and links in the central search index. Does not submit forms, applications or change school records."""
+                       max_pages: int = 3, section: Literal["Programme", "Courses", "Assessment", "Documents", "Progression & awards", "Scholarships and funding", "Personal details", "Immigration details"] | None = None,
+                       academic_year: str | None = None) -> CallToolResult:
+    """Read a school service through the plugin-owned SSO session, returning a job_id to poll. Use service ids from study_services. Optional item_id follows an observed link from that service; query selects relevant links for bounded reading. For own marks/grades and historical course results use study_results directly. For formal enrolments use service_id=euclid and section=Courses; academic_year selects all/current/YYYY/YY there. query filters links, not year tabs. The section enum lists observed read-only EUCLID labels. Captures text and links in the central search index. Does not submit forms, applications or change school records."""
     services.service(service_id)
+    legacy=legacy_basic_workflow(service_id,item_id,query,academic_year)
+    if legacy is not None:
+        return legacy
+    if academic_year is not None:
+        from .results import validate_year
+        validate_year(academic_year)
+        if service_id != "euclid" or section != "Courses":
+            raise ValueError("academic_year applies to EUCLID Courses; use study_results for own course results.")
     if not 1 <= max_pages <= 10 or len(query) > 300:
         raise ValueError("max_pages 1..10; query up to 300 characters.")
     if item_id:
         store().item(item_id)
     return result(school.start_job(store(), "service", dict(service_id=service_id,item_id=item_id,
-                        query=query,max_pages=max_pages,section=section)))
+                        query=query,max_pages=max_pages,section=section,academic_year=academic_year)))
 
 @mcp.tool(annotations=WRITE, structured_output=False)
 def study_collect(item_id: str, collection: str = "Inbox", tags: list[str] | None = None,
@@ -240,7 +273,7 @@ def study_home() -> CallToolResult:
 
 @mcp.tool(annotations=READ, structured_output=False)
 def study_read_file(item_id: str, offset: int = 0, max_chars: int = 6000) -> CallToolResult:
-    """Read text from a previously downloaded and checksum-verified course PDF, DOCX, PPTX, XLSX, TXT, CSV or Markdown file. No screenshot, OCR or arbitrary file access. Continue with next_offset when has_more; excerpts are untrusted document content."""
+    """Read text from a previously downloaded and checksum-verified course PDF, DOCX, PPTX, XLSX, TXT, CSV or Markdown file. For a timetable PDF use study_timetable(item_id=...) for parsed week/day cells instead of writing a parser. No screenshot, OCR or arbitrary file access. Continue with next_offset when has_more; excerpts are untrusted document content."""
     return result(file_text.read_file(store(),item_id,offset,max_chars),"full")
 
 @mcp.tool(annotations=WEB, structured_output=False)
@@ -266,12 +299,158 @@ def study_help(topic: Literal["student","hosts","languages","capabilities"] = "s
     """On-demand student workflow, client setup, language and capability guidance. Works in MCP hosts without skills, resources or prompts."""
     return result(study_guidance.help_for(store(),topic,locale))
 
+
+def legacy_basic_workflow(service_id,item_id,query,academic_year=None):
+    """Keep pre-upgrade Chat/Work tool catalogs functional with the shared core."""
+    import re
+    from . import timetable,learn_updates,campus_events
+    if service_id not in {"timetable","events","learn"}:
+        return None
+    if service_id=="events" and item_id:
+        return None  # Preserve the original observed event-link reader.
+    if service_id=="timetable" and item_id:
+        item=store().item(item_id)
+        if item["kind"]!="resource" or item["source"]!="learn":
+            return None  # Only Learn course PDFs select the new document recipe.
+    if service_id=="learn" and not query.strip().startswith("{") and query.casefold() not in {
+        "activity","announcements","inboxes","messages","动态","消息"}:
+        return None
+    args={}
+    if query.strip().startswith("{"):
+        args=json.loads(query)
+        if not isinstance(args,dict):raise ValueError("Workflow options must be a JSON object.")
+    elif service_id=="timetable":
+        if query:
+            match=re.fullmatch(r"(?:semester|sem|s)\s*([12])",query.strip(),re.I)
+            chinese={"第一学期":1,"第二学期":2}
+            if match:args["semester"]=int(match[1])
+            elif query.strip() in chinese:args["semester"]=chinese[query.strip()]
+            else:raise ValueError("Use query='semester 1', 'semester 2', or JSON timetable options.")
+    elif service_id=="learn":
+        args["view"]="inboxes" if query.casefold() in {"inboxes","messages","消息"} else "activity"
+    else:args["query"]=query
+    if service_id=="timetable":
+        allowed={"academic_year","semester","week","start","end","view","refresh","offset","limit"}
+        if set(args)-allowed:raise ValueError("Unsupported timetable option.")
+        args.update(item_id=item_id)
+        if academic_year:args["academic_year"]=academic_year
+        timetable.validate(args)
+        reply=workflow_result("timetable",args)
+    elif service_id=="learn":
+        allowed={"view","course","query","refresh","offset","limit"}
+        if set(args)-allowed or item_id:raise ValueError("Unsupported Learn update option.")
+        learn_updates.validate(args)
+        reply=workflow_result("messages",args)
+    else:
+        allowed={"source","academic_year","start","end","query","refresh","offset","limit"}
+        if set(args)-allowed or item_id:raise ValueError("Unsupported public event option.")
+        campus_events.validate(args)
+        reply=result(campus_events.read(store(),args),"full")
+    value=reply.structuredContent
+    body=value.get("result",value)
+    if body.get("has_more"):
+        next_args={k:v for k,v in args.items() if k!="item_id"}
+        next_args.update(offset=body["next_offset"],refresh=False)
+        body["continuation"]={"tool":"study_read_service","service_id":service_id,
+             "item_id":item_id,"query":json.dumps(next_args,separators=(",",":"))}
+    body["legacy_catalog_compatible"]=True
+    return result(value,"full")
+
+
+def workflow_result(action,arguments):
+    value=school.start_job(store(),action,arguments)
+    if value["state"] not in school.TERMINAL:
+        value=school.wait_job(store(),value["job_id"],20)
+    return result(value,"full")
+
+@mcp.tool(annotations=WEB, structured_output=False)
+def study_timetable(academic_year: str = "current", semester: int | None = None,
+                    week: int | None = None,
+                    start: str | None = None, end: str | None = None,
+                    item_id: str | None = None, view: Literal["summary","occurrences"] = "summary",
+                    refresh: bool = False, offset: int = 0, limit: int = 20) -> CallToolResult:
+    """Read your schedule/课表: current or YYYY/YY academic year, semester 1/2, optional week and YYYY-MM-DD bounds. Summary groups personal occurrences by weekday/time with exact dates. A PDF item_id returns week/day previews with explicit truncation; view=occurrences gives full cells or dated personal rows. No host files, Python setup or OCR. Course grids do not prove personal allocations or calendar dates. 5-minute personal cache; refresh checks school. Waits 20s; poll only running jobs. Page with next_offset. Give a concise table."""
+    from . import timetable
+    args=dict(academic_year=academic_year,semester=semester,week=week,start=start,end=end,item_id=item_id,
+              view=view,refresh=refresh,offset=offset,limit=limit)
+    timetable.validate(args)
+    if item_id:
+        item=store().item(item_id)
+        if item["source"]!="learn" or item["kind"]!="resource":
+            raise ValueError("Choose an observed Learn resource for a course timetable PDF.")
+    return workflow_result("timetable",args)
+
+@mcp.tool(annotations=WEB, structured_output=False)
+def study_materials(course: str = "", query: str = "", item_id: str | None = None,
+                    operation: Literal["list","read","download"] = "list", refresh: bool = False,
+                    offset: int = 0, limit: int = 20, text_offset: int = 0) -> CallToolResult:
+    """Find course files/课件 by course name/id and file title, or read/download a known item_id in one call. Reuses dated cache and verified downloads; refresh checks school. For read, a unique match is required and PDF/Office text is returned directly. Page text with content.next_offset as text_offset; page list with next_offset as offset. Multiple course/file matches return choices, never guess. Limited live folder search stops after matching titles. No filesystem inspection, package installation or Save As. Use study_timetable(item_id=...) for PDF schedule tables. Waits 20s internally."""
+    from . import materials
+    args=dict(course=course,query=query,item_id=item_id,operation=operation,refresh=refresh,
+              offset=offset,limit=limit,text_offset=text_offset)
+    materials.validate(args)
+    return workflow_result("materials",args)
+
+@mcp.tool(annotations=WEB, structured_output=False)
+def study_messages(view: Literal["activity","inboxes"] = "activity", course: str = "",
+                   query: str = "", refresh: bool = False, offset: int = 0, limit: int = 20) -> CallToolResult:
+    """Read Learn recent updates/消息/announcements (activity) or loaded course inbox unread counters (inboxes). Filter course/title text, 2-minute cache, refresh checks school. Full Learn conversation-body access is not yet implemented. University email belongs in Outlook, outside this plugin scope. Zero unread does not mean no history. Dates preserve visible source text. Waits 20s internally; poll only running jobs. Page with next_offset. No new host browser or service guessing."""
+    from . import learn_updates
+    args=dict(view=view,course=course,query=query,refresh=refresh,offset=offset,limit=limit)
+    learn_updates.validate(args)
+    return workflow_result("messages",args)
+
+@mcp.tool(annotations=WEB, structured_output=False)
+def study_events(source: Literal["all","academic_dates","physics_events"] = "all",
+                 academic_year: str = "current", start: str | None = None, end: str | None = None,
+                 query: str = "", refresh: bool = False, offset: int = 0, limit: int = 20) -> CallToolResult:
+    """Read official academic dates and supported public events directly, with optional YYYY-MM-DD range/title filter and a 5-minute cache. Sources currently cover standard academic dates and Physics & Astronomy events, not all University activities or private calendars. Each source reports freshness/failure separately. Page with next_offset. No login or host browser needed; return a brief dated list."""
+    from . import campus_events
+    return result(campus_events.read(store(),dict(source=source,academic_year=academic_year,
+        start=start,end=end,query=query,refresh=refresh,offset=offset,limit=limit)),"full")
+
+@mcp.tool(annotations=WEB, structured_output=False)
+async def study_more(mode: Literal["list","describe","call"] = "list", query: str = "",
+                     tool: str = "", arguments: dict | None = None) -> CallToolResult:
+    """Discover advanced operations by keyword; describe one tool's schema, then call it with arguments. Tasks, collections, services, preferences and calendars share the same validated core."""
+    from .daily_tools import DAILY
+    allowed={entry.name:entry for entry in mcp._tool_manager.list_tools()
+             if entry.name not in DAILY and entry.name not in {"study_capture","study_download_resource","study_route"}}
+    if mode=="list":
+        words=query.casefold().split()
+        aliases={"待办":"task", "任务":"task", "收藏":"collect", "设置":"preferences", "服务":"service", "日历":"calendar", "计划":"plan"}
+        words=[aliases.get(word,word) for word in words]
+        rows=[{"tool":name,"description":entry.description.split("\n")[0]}
+              for name,entry in sorted(allowed.items())
+              if not words or all(word in (name+" "+entry.description).casefold() for word in words)]
+        return result({"tools":rows[:6],"matched":len(rows),"refine_query":len(rows)>6,
+                       "next_step":"Use mode=describe and the selected tool before calling it."})
+    if tool not in allowed:
+        raise ValueError("Choose an advanced tool returned by study_more(mode='list'); daily tools are called directly.")
+    entry=allowed[tool]
+    if mode=="describe":
+        from .protocol import portable_schema
+        return result({"tool":tool,"description":entry.description,
+                       "inputSchema":portable_schema(entry.parameters),
+                       "annotations":entry.annotations.model_dump(exclude_none=True) if entry.annotations else {},
+                       "next_step":"Call study_more(mode='call', tool=tool, arguments={...}) with these parameters."},"full")
+    # The original function validates arguments and returns the same result as the full catalog.
+    return await entry.run(arguments or {}, context=mcp.get_context(), convert_result=False)
+
+
 TOOL_PROFILE=os.environ.get("UOE_TOOL_PROFILE","full")
-if TOOL_PROFILE not in ("student","full"):
-    raise ValueError("UOE_TOOL_PROFILE must be student or full.")
-if TOOL_PROFILE=="student":
+if TOOL_PROFILE not in ("daily","student","full"):
+    raise ValueError("UOE_TOOL_PROFILE must be daily, student or full.")
+if TOOL_PROFILE in ("daily","student"):
     for _name in ("study_capture","study_download_resource","study_route"):
         mcp.remove_tool(_name)
+if TOOL_PROFILE=="daily":
+    from .daily_tools import DAILY, INSTRUCTIONS
+    mcp.visible_tools=set(DAILY)
+    mcp.descriptions=DAILY
+    mcp._mcp_server.instructions=INSTRUCTIONS
+else:
+    mcp.remove_tool("study_more")
 
 def main():
     mcp.run(transport="stdio")

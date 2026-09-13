@@ -6,6 +6,7 @@ credentials, screenshots, network traces, or signed URLs are returned to the age
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -23,12 +24,20 @@ from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, COURSE_SCAN, RES
                          COURSE_ID, course_items, resource_items, observation, learn_url)
 from .downloads import download_resource, list_downloads, safe_filename, verified_copy
 
-ACTIONS = {"login", "courses", "resources", "download", "myed", "service", "read_resource"}
+ACTIONS = {"login", "courses", "resources", "download", "myed", "service", "read_resource", "results", "timetable", "materials", "messages"}
 TERMINAL = {"complete", "partial", "needs_login", "failed", "cancelled"}
 JOB_ID = re.compile(r"^[a-f0-9]{32}$")
 
 
 class LoginRequired(Exception):
+    pass
+
+
+class CourseUnavailable(Exception):
+    pass
+
+
+class SchoolPageNotReady(Exception):
     pass
 
 
@@ -112,6 +121,13 @@ def wait_job(store: Store,job_id: str,wait_seconds: float = 20,if_updated_at: st
 def cached_operation(store: Store,action: str,args: dict):
     if args.get("refresh",action=="download"):
         return None
+    if action in {"timetable","materials","messages"}:
+        from importlib import import_module
+        name="learn_updates" if action=="messages" else action
+        return import_module("."+name,__package__).cached(store,args)
+    if action=="results":
+        from .results import cached_results
+        return cached_results(store,args.get("academic_year","all"))
     if action=="download":
         saved=[verified_copy(store,key) for key in dict.fromkeys(args["item_ids"])]
         if all(saved):
@@ -146,19 +162,34 @@ def session_status(store: Store) -> dict:
             "host_browser_required":False,"credentials_exposed_to_agent":False}
 
 
+def result_state(value):
+    return "needs_login" if value.get("needs_login") else "partial" if value.get("failed") or value.get("coverage") in {"partial","entry_only","external_provider","unavailable"} else "complete"
+
+
 def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
     if action not in ACTIONS:
         raise ValueError("Unsupported school action.")
     arguments = arguments or {}
     cached=cached_operation(store,action,arguments)
     if cached is not None:
-        key=uuid.uuid4().hex
+        # Repeated cached queries share an immutable receipt instead of writing
+        # another job file each time. Source freshness remains in the result.
+        identity=json.dumps([action,arguments,cached],ensure_ascii=False,sort_keys=True,separators=(",",":"))
+        key=hashlib.sha256(identity.encode("utf-8")).hexdigest()[:32]
+        if job_path(store,key).is_file():
+            return read_job(store,key) | {"reused_cached_job":True}
         stamp=now_utc().isoformat()
-        write_json(job_path(store,key),{"job_id":key,"action":action,"state":"complete",
-            "created_at":stamp,"updated_at":stamp,"progress":"Verified local copy ready.",
+        write_json(job_path(store,key),{"job_id":key,"action":action,"state":result_state(cached),
+            "created_at":stamp,"updated_at":stamp,"progress":"Dated local result ready.",
             "result":cached,"browser_started":False})
         return read_job(store,key)
     active = session_status(store)["active_jobs"]
+    if action in {"results","timetable","materials","messages"}:
+        for prior in active:
+            if prior["action"] == action:
+                record=json.loads(job_path(store,prior["job_id"]).read_text(encoding="utf-8"))
+                if record.get("arguments")==arguments:
+                    return read_job(store,prior["job_id"]) | {"reused_active_job":True}
     if action == "login":
         prior = next((j for j in active if j["action"] == "login"), None)
         if prior:
@@ -190,7 +221,11 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
         record.update(state="failed",progress="Could not start the local school worker.")
         write_json(path, record)
         raise RuntimeError("Could not start the local school worker.") from None
-    return read_job(store, job_id)
+    value=read_job(store, job_id)
+    if action=="myed" or (action=="service" and arguments.get("service_id") in {"myed","euclid"}):
+        from .results import workflow_hint
+        value.update(workflow_hint())
+    return value
 
 
 @contextmanager
@@ -238,8 +273,9 @@ def browser_context(store: Store, interactive: bool = False):
     root = school_root(store)
     with profile_lock(root):
         with sync_playwright() as runtime:
+            from .browsers import channel
             context = runtime.chromium.launch_persistent_context(
-                str(root / "profile"), channel="chrome",headless=not interactive,
+                str(root / "profile"), channel=channel(),headless=not interactive,
                 chromium_sandbox=True,accept_downloads=False,
                 args=["--restore-last-session"],viewport={"width":1280,"height":900})
             try:
@@ -266,19 +302,32 @@ def authenticated(page) -> bool:
             const courseHeading = [...document.querySelectorAll('h1,h2')].some(e => e.innerText.trim()==='Course Content');
             const outline = [...document.querySelectorAll('a[href]')].some(a => /\\/ultra\\/courses\\/_\\d+_\\d+\\/outline$/.test(a.href));
             const exit = [...document.querySelectorAll('button')].some(b => (b.innerText.trim() || b.getAttribute('aria-label'))==='Exit');
-            return cards || courseHeading || (outline && exit);
+            const password=document.querySelector('input[type="password"]');
+            if (password && password.getClientRects().length) return false;
+            const nav=[...document.querySelectorAll('a[href]')];
+            const profile=nav.some(a=>/\\/ultra\\/profile$/.test(a.href));
+            const surfaces=['/ultra/course','/ultra/stream','/ultra/messages'];
+            const shell=profile && surfaces.filter(p=>nav.some(a=>a.href.endsWith(p))).length>=2;
+            return cards || courseHeading || (outline && exit) || shell;
         }"""))
     except Exception:
         return False
 
 
 def ensure_learn(page):
-    deadline = time.monotonic() + 50
+    deadline = time.monotonic() + 20
     followed_login = False
     while time.monotonic() < deadline:
         if authenticated(page):
             return
         try:
+            if urlsplit(page.url).hostname in LEARN_HOSTS:
+                blocked=page.get_by_text("This course is currently unavailable.",exact=False)
+                if blocked.count() and blocked.first.is_visible():
+                    raise CourseUnavailable()
+            from .portal import login_gate
+            if login_gate(page):
+                raise LoginRequired()
             # Learn can show its welcome page even while the campus SSO session is valid.
             # Follow the real same-origin login link once; never supply credentials.
             if not followed_login and urlsplit(page.url).hostname in LEARN_HOSTS:
@@ -295,12 +344,12 @@ def ensure_learn(page):
             password = page.locator('input[type="password"]')
             if password.count() and password.first.is_visible():
                 raise LoginRequired()
-        except LoginRequired:
+        except (LoginRequired,CourseUnavailable):
             raise
         except Exception:
             pass
         time.sleep(0.4)
-    raise LoginRequired()
+    raise SchoolPageNotReady()
 
 
 def mark_session(store: Store, connected: bool):
@@ -410,7 +459,7 @@ def open_course(store: Store, page, course: dict):
 
 def list_resources(store: Store, page, args: dict, progress) -> dict:
     course = resolve_course(store,args["course_id"])
-    if course["status"] == "unavailable":
+    if course["status"] == "unavailable" and not args.get("probe_unavailable"):
         return {"live":False,"items":[],"coverage":"partial","warning":"Previously observed as unavailable. Refresh courses to verify its current status."}
     open_course(store,page,course)
     max_folders = args.get("max_folders",80)
@@ -428,9 +477,16 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
             break
         time.sleep(0.5)
     expanded, failures = set(), []
+    folder_context={}
+    search_deadline=time.monotonic()+args.get("budget_seconds",600)
+    search_terms=[t.casefold() for t in args.get("search_terms",[]) if t]
     # A bounded fixed-point expansion visits nested modules as they become visible.
     for _ in range(max_folders):
+        if time.monotonic()>=search_deadline:break
+        if args.get("stop_after_matches") and any(any(t in (r["title"]+" "+folder_context.get(r["url"],"")).casefold() for t in search_terms) for r in page.evaluate(RESOURCE_LINKS)):
+            break
         candidates = page.evaluate(EXPANDERS)
+        candidates.sort(key=lambda r:not any(t in r["title"].casefold() for t in search_terms))
         candidate = next((x for x in candidates if x["id"] not in expanded),None)
         if not candidate:
             break
@@ -457,10 +513,18 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
                 if settled>=4:
                     break
                 time.sleep(0.3)
+            if controlled:
+                links=page.locator('[id="'+controlled.replace('"','')+'"]').locator("a[href]").evaluate_all(
+                    "(aa)=>aa.map(a=>a.href)")
+                for url in links:
+                    folder_context[url]=(folder_context.get(url,"")+" "+candidate["title"]).strip()[:1000]
         except Exception:
             failures.append(candidate["title"])
     rows = page.evaluate(RESOURCE_LINKS)
     items = resource_items(rows,course)[:500]
+    for item in items:
+        if folder_context.get(item.url):
+            item.excerpt=item.title+"\n"+folder_context[item.url]
     obs = observation(page.url,course["title"] + " resources",items,
                       "Course outline and " + str(len(expanded)) + " expanded modules/folders; external tools excluded",
                       complete=False)
@@ -574,6 +638,12 @@ def execute_job(store: Store, job_id: str):
     path = job_path(store,job_id)
     record = json.loads(path.read_text(encoding="utf-8"))
     record["worker_pid"] = os.getpid()
+    started=time.monotonic()
+    record["timings_ms"]={}
+    try:
+        record["timings_ms"]["worker_start_delay"]=round((now_utc()-datetime.fromisoformat(record["created_at"])).total_seconds()*1000)
+    except (KeyError, ValueError, TypeError):
+        pass  # Optional telemetry must not prevent an older job from reporting errors.
     def progress(message: str, state: str = "running"):
         record.update(state=state,progress=message,updated_at=now_utc().isoformat())
         write_json(path,record)
@@ -581,8 +651,13 @@ def execute_job(store: Store, job_id: str):
         action, args = record["action"], record["arguments"]
         progress("Waiting for the private school browser.")
         with browser_context(store,interactive=action == "login") as context:
+            record["timings_ms"]["browser_ready"]=round((time.monotonic()-started)*1000)
             page = context.pages[0] if context.pages else context.new_page()
             if action == "login":
+                from .results import invalidate_cache
+                invalidate_cache(store)
+                from .workflow_cache import invalidate
+                invalidate(store)
                 page.goto(LEARN_HOME,wait_until="domcontentloaded")
                 progress("Complete the campus sign-in and MFA in the dedicated Chrome window. It closes after verification.",
                          "waiting_for_login")
@@ -598,6 +673,13 @@ def execute_job(store: Store, job_id: str):
                     time.sleep(1)
                 else:
                     raise LoginRequired()
+            elif action == "results":
+                from .portal import read_service
+                result = read_service(store,page,{"service_id":"euclid","section":"Courses",
+                    "max_pages":1,"results_only":True,**args},progress)
+            elif action in {"timetable","materials","messages"}:
+                from . import timetable, materials, learn_updates
+                result={"timetable":timetable,"materials":materials,"messages":learn_updates}[action].read(store,page,args,progress)
             elif action == "courses":
                 result = list_courses(store,page,args,progress)
             elif action == "resources":
@@ -611,13 +693,22 @@ def execute_job(store: Store, job_id: str):
                 result = read_service(store,page,{"service_id":"myed",**args},progress)
             else:
                 raise ValueError("Unsupported school action.")
+            record["timings_ms"]["read_complete"]=round((time.monotonic()-started)*1000)
+        record["timings_ms"]["worker_total"]=round((time.monotonic()-started)*1000)
         record["result"] = result
-        state = "needs_login" if result.get("needs_login") else "partial" if result.get("failed") or result.get("coverage") in {"partial","entry_only","external_provider","unavailable"} else "complete"
+        state = result_state(result)
         progress("School operation finished.",state)
     except LoginRequired:
         if record["action"] in {"login","courses","resources","download","read_resource"}:
             mark_session(store,False)
         progress("Campus sign-in is required in this plugin's dedicated local browser. Use study_connect_school.","needs_login")
+    except CourseUnavailable:
+        record["result"]={"coverage":"unavailable","items":[],
+            "warning":"The school says this course is currently unavailable. Its instructor controls access; this is not evidence of an expired campus login.",
+            "next_step":"Use another accessible course/resource or wait for the instructor to open it. Do not repeat login or browser attempts for this closed course."}
+        progress("The requested course is currently unavailable at Learn.","partial")
+    except SchoolPageNotReady:
+        progress("The school page did not load supported content in time. Retry once later; this alone does not mean campus login expired.","failed")
     except BrowserBusy:
         progress("The private browser is busy. Finish the existing login or job, then retry.","failed")
     except Exception as error:

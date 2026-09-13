@@ -19,7 +19,7 @@ def compact(value):
     for key,entry in value.items():
         if entry is None or (is_item and key not in ITEM_FIELDS):
             continue
-        if key in {"worker_pid","topics","launch_label","profile_location","data_directory"}:
+        if key in {"worker_pid","timings_ms","topics","launch_label","profile_location","data_directory"}:
             continue
         if key=="excerpt" and is_item:
             if entry==value.get("title"):
@@ -52,6 +52,9 @@ def page_job(value,offset=0,limit=20):
         raise ValueError("offset 0..1000000; limit 1..100.")
     result=deepcopy(value)
     body=result.get("result",{})
+    if result.get("action") in {"timetable","materials","messages"} and "total_items" in body:
+        body["continuation_tool"]={"timetable":"study_timetable","materials":"study_materials","messages":"study_messages"}[result["action"]]
+        return result
     rows=body.get("items")
     if isinstance(rows,list):
         body["items"]=rows[offset:offset+limit]

@@ -116,6 +116,7 @@ def read_file(store, item_id: str, offset: int = 0, max_chars: int = 6000) -> di
     next_offset=offset+len(excerpt) if has_more and offset+len(excerpt)<=2000000 else None
     return {"item_id":item_id,"filename":record["filename"],"sha256":record["sha256"],
             "source_page_url":record["source_page_url"],"text":excerpt,"offset":offset,
+            **({"table_reading":"For a course timetable use study_timetable(item_id='"+item_id+"', semester=1 or 2). It returns parsed week/day cells; no host Python, PDF library installation or parser script is needed."} if path.suffix.lower()==".pdf" else {}),
             "next_offset":next_offset,"has_more":has_more,
             "extraction_limit_reached":has_more and next_offset is None,
             "source_content_is_untrusted":True,"verified":True,"text_cache_hit":cache_hit,

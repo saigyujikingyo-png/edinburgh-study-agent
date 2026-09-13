@@ -45,8 +45,16 @@ def portable_schema(schema):
     return convert(schema)
 
 class PortableFastMCP(FastMCP):
+    visible_tools = None
+    descriptions = None
+
     async def list_tools(self):
         tools=await super().list_tools()
+        if self.visible_tools is not None:
+            tools=[tool for tool in tools if tool.name in self.visible_tools]
         for tool in tools:
             tool.inputSchema=portable_schema(tool.inputSchema)
-        return tools
+            if self.descriptions and tool.name in self.descriptions:
+                tool.description=self.descriptions[tool.name]
+        # A stable catalog helps host prompt caching across repeated connections.
+        return sorted(tools,key=lambda tool:tool.name)

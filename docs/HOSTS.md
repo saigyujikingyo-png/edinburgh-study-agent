@@ -1,10 +1,12 @@
 # Connect your agent
 
-UoE Companion is a student-focused MCP server. Codex develops it; ChatGPT Work, Claude, WorkBuddy, DeepSeek Harness and other MCP clients use the same local core. Each person uses their own school account, data directory and connection. Switching clients on the same computer can reuse that person's campus session. Different people must not share it.
+UoE Companion is a student-focused MCP server. ChatGPT Chat/Work, Codex, Claude, WorkBuddy, DeepSeek Harness and other MCP clients use the same local core. Each person uses their own school account, data directory and connection. Switching clients on the same computer can reuse that person's campus session. Different people must not share it.
 
 ## Install once
 
-Install Python 3.11+ and Google Chrome, download the release, then run `python scripts/install_runtime.py` from the extracted project. On Windows:
+Windows x64 students should use the [bundled setup ZIP](EASY_INSTALL.md): extract it, double-click Install.cmd and select their local agent. It includes Python and dependencies, merges WorkBuddy/Claude Desktop configuration with backups and enables the 13-tool daily profile. Other host documents are generated in the private connections folder. Chrome or Edge is required.
+
+The following commands remain an optional developer/manual route. Install Python 3.11+ and Chrome, obtain the source release, then run `python scripts/install_runtime.py`. On Windows:
 
 ```powershell
 $uoePython = Join-Path $env:USERPROFILE '.edinburgh-study-agent\runtime\Scripts\python.exe'
@@ -73,7 +75,9 @@ References: [official MCP client](https://github.com/deepseek-ai/deepseek-harnes
 
 ## Student tools and language
 
-New generated local-host entries use `UOE_TOOL_PROFILE=student`: 28 tools for students. It hides the three legacy developer tools `study_capture`, `study_download_resource` and `study_route`. `full` exposes 31 tools, including all 28 pre-0.5 IDs and three new tools. Existing Work connections default to `full` for compatibility. Server descriptions and on-demand help apply without installing the Codex skill.
+The 0.7.0 Windows wizard enables `UOE_TOOL_PROFILE=daily` for selected local agents: 13 direct tools, with advanced task/collection/calendar/service operations discovered and called through `study_more`. Original validation and private storage are retained. Existing student/full profiles remain valid; adding a daily menu does not remove their tools. The wizard does not silently change an existing ChatGPT connection's catalog.
+
+New generated local-host entries use `UOE_TOOL_PROFILE=student`: 33 tools for students. It hides the three legacy developer tools `study_capture`, `study_download_resource` and `study_route`. `full` exposes 36 tools. Version 0.6.0 adds four basic workflow tools to both profiles, retaining existing tool names. Existing Work connections default to `full` for compatibility. Server descriptions and on-demand help apply without installing the Codex skill.
 
 Ask in your preferred language, for example “Show my study agenda” or “显示本周学习日程”. Use `study_preferences(locale="auto")` to follow each request's language. See [language scope](LANGUAGES.md).
 
@@ -86,8 +90,14 @@ Ask in your preferred language, for example “Show my study agenda” or “显
 | ChatGPT cloud Work | 0.5.1: live Learn refresh, then status/cached lookup again after consolidation | Only tested account/service scope is established |
 | Claude Desktop | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a Claude model turn have not been verified |
 | Claude Code | Portable entry and official-CLI installer implemented | CLI installation and model roundtrip not tested on the acceptance host |
-| WorkBuddy | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a WorkBuddy model turn have not been verified |
+| WorkBuddy | 0.5.2: a fresh Hy4 preview (high) conversation used one results call and returned all loaded years; source rows and year means were checked. See [measurements](WORKBUDDY_RESULTS.md). | The turn took 89.4 seconds and added unsupported interpretation; final summary/presentation guidance needs a new model test. This is not Terra max acceptance |
 | DeepSeek Harness | Official bridge successfully discovered 28 tools, accepted schemas, executed multilingual catalog/preferences and task/agenda calls, rendered text and propagated errors | Registration/lifecycle fixture, not a full Harness agent/model turn |
 | Generic MCP | Real stdio initialization/list/call checks for both tool profiles | Individual clients and model behavior require their own acceptance |
 
 Configuration acceptance, protocol acceptance, official-bridge acceptance and a real model turn are separate claims. No other user's account is validated by the developer's result.
+
+Version 0.6.0 student workflow backend/protocol measurements are recorded in [STUDENT_WORKFLOWS.md](STUDENT_WORKFLOWS.md). They do not certify a new WorkBuddy model turn or the new tools in every Chat/Work mode. Refresh the host MCP catalog once after upgrading; reuse the same entry, private data and campus login.
+
+The 0.7.0 installer and daily-menu checks are recorded in [INSTALL_PERFORMANCE.md](INSTALL_PERFORMANCE.md). They are not a new Claude, DeepSeek, Codex or WorkBuddy model conversation. The installer generates a generic MCP document for Codex but does not rewrite Codex's global configuration. Normal runtime use does not require a coding checkout.
+
+The installed Codex CLI's `codex mcp add --help` confirms the supported local registration route: `codex mcp add uoe-companion --env UOE_TOOL_PROFILE=daily --env EDINBURGH_STUDY_HOME=<private-directory> -- <installed-python> -m edinburgh_study_agent.server`. Pass each path as a properly quoted argument. Use this optional native CLI route only when you want a local stdio connection; keep an already-working registered ChatGPT/UoE connection instead of adding duplicates. This command's availability was checked locally; a new Codex model turn was not run.

@@ -64,9 +64,11 @@ def directory(store, query: str = "", locale: str | None = None) -> dict:
         if source not in checks and source in latest:
             checks[source]=latest[source]
     needle = search_key(query)
+    terms = needle.split()
     result = []
     for entry in SERVICES:
-        if needle and needle not in search_key(" ".join(str(v) for v in entry.values()) + " " + service_aliases(entry["id"])):
+        haystack = search_key(" ".join(str(v) for v in entry.values()) + " " + service_aliases(entry["id"]))
+        if terms and not any(term in haystack for term in terms):
             continue
         current = dict(entry)
         current.update(service_labels(entry["id"], view["catalog_language"]))

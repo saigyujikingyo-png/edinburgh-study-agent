@@ -1,6 +1,23 @@
 # Chat, local Work and cloud Work acceptance — UoE Companion
 
-## 0.5.1 single-entry acceptance — 2026-09-12
+## Remote icon replacement — 2026-09-12
+
+The original artwork was exported as a 256-pixel PNG below the ChatGPT creation form's 10 KB limit. With explicit approval, a replacement registered entry was connected to the same private tunnel and backend, checked, and retained under the final name **UoE Companion** after the old entry was removed. The remote plugin page loaded the saved 256 x 256 image after navigation/reload; the icon also appeared in the ordinary Chat tool display. The campus runtime remained 0.5.1.
+
+Post-replacement evidence:
+
+| Mode | Latest result | Scope |
+| --- | --- | --- |
+| Ordinary Chat | Passed in a fresh Chat with the retained entry selected | Status returned 0.5.1; a one-course cached query succeeded; the UI exposed both tool calls and cached-only output |
+| Cloud Work | Passed after removing the old entry and restoring the final name | Status and one-course cached query succeeded |
+| Desktop local Work | Passed in a fresh task with no ChatGPT project selected | The user selected the retained entry; session metadata identified `codex_work_desktop`; status and one-course cached query both completed with version 0.5.1 |
+
+The original Chat and local Work tasks retained the deleted entry's tool mapping; reselecting a tag did not refresh the old local task. Fresh tasks resolved these failures. A separate attempt within a ChatGPT project encountered the host's project-synchronisation error; using a projectless local Work verified the plugin without repairing that project. The failed attempts remain in private evidence.
+
+All three modes now have actual post-replacement status and bounded cached-query evidence through the one retained entry. This does not establish live campus freshness or repeat every school workflow. No screenshot, coordinate click, new campus login, download or school write was used for these checks. Private task identities, app identifiers and diagnostic receipts are not published.
+
+
+## Historical 0.5.1 single-entry acceptance — 2026-09-12
 
 At the user's request, the duplicate local Codex package was uninstalled and only its personal-marketplace catalog entry removed. The campus runtime, profile, files and registered ChatGPT connection were preserved. The retained entry is named **UoE Companion**, without a separate connection suffix.
 
