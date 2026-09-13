@@ -72,6 +72,7 @@ def current_year():
 def validate(args):
     validate_year(args.get("academic_year","current"))
     if args.get("semester") not in (None,1,2):raise ValueError("semester must be 1 or 2.")
+    if args.get("week") is not None and not 1<=args["week"]<=60:raise ValueError("week must be 1..60.")
     if args.get("view","summary") not in ("summary","occurrences"):raise ValueError("Unknown timetable view.")
     if not 0<=args.get("offset",0)<=10000 or not 1<=args.get("limit",20)<=100:
         raise ValueError("offset 0..10000; limit 1..100.")
@@ -115,6 +116,7 @@ def select(data,args,cache_hit=False):
     resolved=current_year() if year=="current" else year
     items=[e for e in data["items"] if (resolved=="all" or e["academic_year"]==resolved)
         and (args.get("semester") is None or e["semester"]==args["semester"])
+        and (args.get("week") is None or e["week"]==args["week"])
         and (not args.get("start") or e["starts_at"][:10]>=args["start"])
         and (not args.get("end") or e["starts_at"][:10]<=args["end"])]
     rows=items
@@ -159,14 +161,26 @@ def document(store,args):
     hit=data is not None
     if data is None:
         data=extract(path)
+    if not hit or "pages" in data or "tables" in data:
+        # The weekly reader needs only labelled cells. Raw pages and duplicate
+        # table geometry remain derivable from the verified original PDF.
+        data={key:data[key] for key in ("weeks","problems","scope","date_mapping")}
         workflow_cache.put(store,"pdf_layout",key,data)
-    rows=[w for w in data["weeks"] if args.get("semester") is None or w["semester"]==args["semester"]]
+    rows=[w for w in data["weeks"] if (args.get("semester") is None or w["semester"]==args["semester"])
+          and (args.get("week") is None or w["week"]==args["week"])]
+    summary=args.get("view","summary")=="summary"
+    if summary:
+        rows=[{**w,"days":{day:text if len(text)<=128 else text[:128]+"…" for day,text in w["days"].items()},
+               "truncated_days":[day for day,text in w["days"].items() if len(text)>128]} for w in rows]
     return dict(**paged(rows,args),item_id=item_id,filename=saved["filename"],sha256=saved["sha256"],
         source_url=saved["source_page_url"],scope=data["scope"],date_mapping=data["date_mapping"],
         coverage="course_document_week_grid" if rows else "partial",problems=data["problems"],
         extraction_cache_hit=hit,verified=True,remote_freshness_checked=False,
         source_content_is_untrusted=True,
-        response_guidance="Summarise the observed week/day cells directly. No host filesystem, Python setup or custom parser is needed. Do not assign dates or personal groups from this course grid.")
+        view="week_previews" if summary else "week_cells",
+        detail_tool={"tool":"study_timetable","arguments":{"item_id":item_id,"semester":args.get("semester"),"view":"occurrences"},
+                     "optional_filter":"Set week to read one labelled week; next_offset pages the remaining rows."},
+        response_guidance="For an overview use these week/day previews. truncated_days identifies incomplete cells: request view=occurrences and a week for full class details. No host files, Python setup or parser is needed. Do not infer calendar dates or personal groups from this course grid.")
 
 def export_form():
     day=now_utc().astimezone(LONDON).date().isoformat()

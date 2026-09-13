@@ -21,11 +21,11 @@ Complete campus sign-in and MFA in the dedicated local window when a live job re
 - School resources: `study_services`, `study_read_service`, `study_search`.
 - Organisation: `study_home`, collections, tasks, agenda and study-plan tools.
 
-The full catalog has 32 operations; the student profile has 29. Refresh the registered plugin's tool catalog after runtime upgrades. Server instructions and `study_help` supply workflows to hosts without the optional Codex skill.
+The full catalog has 36 operations; the student profile has 33. Version 0.7.0 also provides a 13-tool daily menu with advanced discovery. Keep the existing ChatGPT connection and its catalog unless explicitly changing profiles. Server instructions and `study_help` supply workflows to hosts without the optional Codex skill.
 
 ## Deploy on another machine
 
-1. Install Chrome and Python 3.11+, obtain the public release, then run `python scripts/install_runtime.py` to install the private backend. Do not register a second local marketplace plugin for normal ChatGPT use.
+1. On Windows x64, use the [bundled setup ZIP](EASY_INSTALL.md) to install the private backend without a separate Python installation. Chrome or Edge is required. The source installer remains a developer alternative. Do not register a second local marketplace plugin for normal ChatGPT use.
 2. Create an authorised private Secure MCP Tunnel associated with your intended organisation/workspace.
 3. Provide a tunnel Read + Use key locally; retain it in process environment or Windows DPAPI, never source files or chat.
 4. Configure `scripts/Connect-Work.ps1` with the actual tunnel ID, official client and private runtime.

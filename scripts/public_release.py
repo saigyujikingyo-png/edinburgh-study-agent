@@ -20,6 +20,7 @@ SCRIPT_FILES = {
     "package_plugin.py", "public_release.py", "benchmark.py", "Connect-Work.ps1",
     "Enable-Work-Connection.ps1", "Run-Work-Connection.ps1",
     "Stop-Work-Connection.ps1",
+    "Install.cmd", "build_windows.py", "benchmark_student.py",
 }
 SOURCE_ROOTS = {".codex-plugin", ".github", "src", "scripts", "tests", "docs", "skills", "assets"}
 ICON_PNG_PROFILES = {

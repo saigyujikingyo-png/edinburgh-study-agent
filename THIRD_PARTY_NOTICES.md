@@ -13,6 +13,8 @@ The MIT license at the repository root covers this project's original code. Depe
 | tzdata | Runtime dependency | [Upstream repository](https://github.com/python/tzdata) |
 | BlackboardSync and bblearn | Reference only; no code copied, vendored or installed | [Review and source links](docs/GITHUB_REFERENCES.md) |
 
-Transitive dependencies retain their own licenses. A deployment that redistributes a Python runtime or dependency binaries must retain the notices included by those distributions. The release here contains project source and plugin metadata, not Chrome, the tunnel client or an installed Python environment.
+Transitive dependencies retain their own licenses. The Windows setup ZIP additionally redistributes the official CPython embeddable runtime and upstream dependency wheels, including the Playwright driver. Python's license remains in `payload/runtime/Scripts/LICENSE.txt`; wheel metadata and bundled licence/notice files remain under `payload/runtime/Lib/site-packages`. `payload/PROVENANCE.json` records the official Python URL/checksum and the exact wheel filenames/checksums. No private installed environment is copied into the release.
+
+The source/plugin archive still contains only project source and metadata. Neither archive includes Chrome, Edge, the OpenAI tunnel client, campus documents or account credentials. Python distribution reference: [official Windows embedding guidance](https://docs.python.org/3.13/using/windows.html#the-embeddable-package).
 
 University branding, course materials and personal records are not granted an open-source license by this project.

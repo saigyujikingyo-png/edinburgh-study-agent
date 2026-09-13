@@ -19,8 +19,8 @@ def server_config(python, home, locale="auto", profile="student"):
     python, home = Path(python).resolve(), Path(home).resolve()
     if not python.is_file():
         raise ValueError("Install the private Python runtime first.")
-    if profile not in ("student", "full"):
-        raise ValueError("Choose student or full tools.")
+    if profile not in ("daily", "student", "full"):
+        raise ValueError("Choose daily, student or full tools.")
     return {"command":str(python),"args":["-m",MODULE],"env":{
         "PYTHONUTF8":"1","EDINBURGH_STUDY_HOME":str(home),
         "UOE_LOCALE":normalize_locale(locale),"UOE_TOOL_PROFILE":profile}}
@@ -35,9 +35,9 @@ def host_document(host, config):
     if host == "chatgpt-work":
         return {"setup_guide":"https://github.com/saigyujikingyo-png/edinburgh-study-agent/blob/main/docs/WORK_SETUP.md",
                 "transport":"private Secure MCP Tunnel","uses_same_local_data":True,
-                "surfaces":["ChatGPT Chat","ChatGPT cloud Work"],
+                "surfaces":["ChatGPT Chat","ChatGPT local Work","ChatGPT cloud Work"],
                 "binding_check":"python -m edinburgh_study_agent.chatgpt check",
-                "note":"Install AND connect your own ChatGPT app, then bind the private local plugin to it. Both Chat and Work need actual model acceptance. A local icon or healthy tunnel does not prove the app is connected."}
+                "note":"Install AND connect one private ChatGPT app. Existing connections are reused; a second local plugin is not required. Each Chat/Work mode needs its own model acceptance."}
     return {"mcpServers":{SERVER_NAME:config}}
 
 def atomic_json(path, document):
@@ -133,7 +133,9 @@ def doctor(config):
                 help_result=await session.call_tool("study_help",{"topic":"languages","locale":"fr"})
                 assert not status.isError and not help_result.isError
                 names={tool.name for tool in catalog.tools}
-                assert {"study_agenda","study_preferences","study_help","study_download_files"} <= names
+                expected={"study_agenda","study_help","study_status","study_materials"}
+                expected |= {"study_more"} if config["env"].get("UOE_TOOL_PROFILE")=="daily" else {"study_preferences","study_download_files"}
+                assert expected <= names
                 return {"server":init.serverInfo.name,"version":status.structuredContent["version"],
                         "tools":len(names),"tool_profile":config["env"].get("UOE_TOOL_PROFILE","full"),
                         "stdio_initialize_list_call":"passed","host_model_roundtrip":"not_tested",
@@ -147,7 +149,7 @@ def main():
     parser.add_argument("--python",type=Path,default=Path(sys.executable))
     parser.add_argument("--home",type=Path,default=Path(os.environ.get("EDINBURGH_STUDY_HOME",Path.home()/".edinburgh-study-agent")))
     parser.add_argument("--locale",default="auto")
-    parser.add_argument("--profile",choices=["student","full"],default="student")
+    parser.add_argument("--profile",choices=["daily","student","full"],default="student")
     parser.add_argument("--output",type=Path)
     parser.add_argument("--config-path",type=Path)
     args=parser.parse_args()

@@ -14,6 +14,8 @@ CAPABILITIES = {
         "Unified cached student agenda, linked local tasks and independent display timezone",
         "Ten-language service catalog, persistent preferences and per-call language overrides",
         "Portable MCP schemas, student tool profile and host configuration generator/merge installers",
+        "Windows x64 setup ZIP with bundled Python, local bilingual wizard, checksum verification, configuration backups and runtime rollback",
+        "13-tool daily profile with on-demand advanced operations; original student/full profiles remain compatible",
         "Official DeepSeek MCP bridge integration tested with a registration fixture",
         "Local ICS import/export; one private profile and connection per person",
     ],

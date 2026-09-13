@@ -19,7 +19,7 @@ GUIDANCE = {
   "coverage": "Cached absence is not absence at the University. Show source and observation time. Do not turn incomplete or unknown dates into invented deadlines.",
  },
  "hosts": {"core":"Standard MCP stdio; no Codex-only tool dependency or host browser.",
-  "setup":"Run python -m edinburgh_study_agent.hosts generate in the installed runtime; doctor tests the MCP protocol. See docs/HOSTS.md for each client.",
+  "setup":"Windows x64: extract the setup ZIP and double-click Install.cmd. It includes Python/dependencies, merges selected WorkBuddy/Claude settings and generates private documents for other hosts. New ChatGPT accounts still need platform setup. See docs/EASY_INSTALL.md; doctor is a protocol check, not model acceptance.",
   "clients":{"chatgpt_work":"ChatGPT Chat, local Work and cloud Work use one UoE Companion app installed AND connected through the private tunnel. Keep the campus backend online. A second local marketplace plugin is not required; bind is optional for Codex developers.",
    "claude_desktop":"Local mcpServers JSON, merge installer",
    "claude_code":"Official claude mcp CLI or project .mcp.json",

@@ -185,7 +185,7 @@ def test_old_portal_call_advertises_results_without_an_extra_catalog_roundtrip(t
     monkeypatch.setattr(school.subprocess,"Popen",lambda *a,**kw:object())
     queued=school.start_job(store,"myed")
     hint=queued["available_workflows"]["course_results"]
-    assert queued["plugin_version"]=="0.6.0"
+    assert queued["plugin_version"]=="0.7.0"
     assert queued["host_browser_required"] is False
     assert hint["tool"]=="study_results" and hint["arguments"]=={"academic_year":"all"}
     assert hint["status"]=="implemented"

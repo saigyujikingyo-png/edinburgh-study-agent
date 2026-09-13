@@ -6,6 +6,7 @@ credentials, screenshots, network traces, or signed URLs are returned to the age
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -121,8 +122,9 @@ def cached_operation(store: Store,action: str,args: dict):
     if args.get("refresh",action=="download"):
         return None
     if action in {"timetable","materials","messages"}:
-        from . import timetable, materials, learn_updates
-        return {"timetable":timetable,"materials":materials,"messages":learn_updates}[action].cached(store,args)
+        from importlib import import_module
+        name="learn_updates" if action=="messages" else action
+        return import_module("."+name,__package__).cached(store,args)
     if action=="results":
         from .results import cached_results
         return cached_results(store,args.get("academic_year","all"))
@@ -170,7 +172,12 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
     arguments = arguments or {}
     cached=cached_operation(store,action,arguments)
     if cached is not None:
-        key=uuid.uuid4().hex
+        # Repeated cached queries share an immutable receipt instead of writing
+        # another job file each time. Source freshness remains in the result.
+        identity=json.dumps([action,arguments,cached],ensure_ascii=False,sort_keys=True,separators=(",",":"))
+        key=hashlib.sha256(identity.encode("utf-8")).hexdigest()[:32]
+        if job_path(store,key).is_file():
+            return read_job(store,key) | {"reused_cached_job":True}
         stamp=now_utc().isoformat()
         write_json(job_path(store,key),{"job_id":key,"action":action,"state":result_state(cached),
             "created_at":stamp,"updated_at":stamp,"progress":"Dated local result ready.",
@@ -266,8 +273,9 @@ def browser_context(store: Store, interactive: bool = False):
     root = school_root(store)
     with profile_lock(root):
         with sync_playwright() as runtime:
+            from .browsers import channel
             context = runtime.chromium.launch_persistent_context(
-                str(root / "profile"), channel="chrome",headless=not interactive,
+                str(root / "profile"), channel=channel(),headless=not interactive,
                 chromium_sandbox=True,accept_downloads=False,
                 args=["--restore-last-session"],viewport={"width":1280,"height":900})
             try:

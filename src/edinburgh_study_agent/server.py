@@ -7,7 +7,6 @@ from typing import Literal, Annotated
 from pydantic import Field
 from .protocol import PortableFastMCP
 from mcp.types import CallToolResult, TextContent, ToolAnnotations, Icon
-from .calendar_io import import_calendar, export_calendar
 from .downloads import download_resource, list_downloads
 from .models import Kind, Observation, Source
 from .planner import build_plan
@@ -19,6 +18,7 @@ from .responses import compact, page_job
 from . import localization, agenda, help as study_guidance
 
 mcp = PortableFastMCP("UoE Companion",
+    log_level="WARNING",
     website_url="https://github.com/saigyujikingyo-png/edinburgh-study-agent",
     icons=[Icon(src="https://raw.githubusercontent.com/saigyujikingyo-png/edinburgh-study-agent/main/assets/icon.png",
                 mimeType="image/png",sizes=["512x512"])],
@@ -62,6 +62,9 @@ def study_status(include_capabilities: bool = False) -> CallToolResult:
         "learn_updates_and_unread":"study_messages","public_dates_events":"study_events",
         "older_chat_work_catalog":"study_read_service: timetable + query='semester 1'; events for public dates; learn + query='activity' or 'inboxes'. Timetable item_id reads a course PDF."}
     value["preferences"]=localization.preferences(store())["preferences"]
+    if TOOL_PROFILE=="daily":
+        value["basic_workflows"].pop("older_chat_work_catalog",None)
+        value["basic_workflows"]["advanced_operations"]="study_more"
     if include_capabilities:
         from .capabilities import CAPABILITIES
         value["feature_status"]=CAPABILITIES
@@ -144,11 +147,14 @@ def study_import_calendar(file_path: str, source: Source, source_url: str, start
                           semantics: Literal["events", "deadlines"] = "events") -> CallToolResult:
     """Import a local .ics export in a bounded inclusive date range with recurrence/exceptions.
     source_url is the content page, never a secret subscription URL. Use deadlines only for Learn due-date feeds."""
-    return result(import_calendar(store(), file_path, source, source_url, start, end, semantics))
+    from .calendar_io import import_calendar
+    return result(import_calendar(store(), file_path, source_url=source_url, source=source,
+                                  start=start, end=end, semantics=semantics))
 
 @mcp.tool(annotations=WRITE, structured_output=False)
 def study_export_calendar(start: str, end: str, filename: str = "edinburgh-study.ics") -> CallToolResult:
     """Write observed deadline/event records to a local .ics file. Does not publish or subscribe any calendar."""
+    from .calendar_io import export_calendar
     return result(export_calendar(store(), start, end, filename))
 
 @mcp.tool(annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint=True), structured_output=False)
@@ -359,12 +365,13 @@ def workflow_result(action,arguments):
 
 @mcp.tool(annotations=WEB, structured_output=False)
 def study_timetable(academic_year: str = "current", semester: int | None = None,
+                    week: int | None = None,
                     start: str | None = None, end: str | None = None,
                     item_id: str | None = None, view: Literal["summary","occurrences"] = "summary",
                     refresh: bool = False, offset: int = 0, limit: int = 20) -> CallToolResult:
-    """Read your schedule/课表 directly: current or YYYY/YY academic year, semester 1/2, optional YYYY-MM-DD bounds. Default summary groups actual occurrences by weekday/time with exact dates; occurrences gives dated rows. For a course timetable PDF pass its material item_id: automatic download, column-aware week/day extraction and checksum cache, no host files/Python/OCR needed. Course PDFs do not prove personal group allocations. 5-minute personal cache, refresh checks school. Waits 20s internally; poll only a running job. Page by repeating this tool with next_offset. Return a brief table; no website/chart unless requested."""
+    """Read your schedule/课表: current or YYYY/YY academic year, semester 1/2, optional week and YYYY-MM-DD bounds. Summary groups personal occurrences by weekday/time with exact dates. A PDF item_id returns week/day previews with explicit truncation; view=occurrences gives full cells or dated personal rows. No host files, Python setup or OCR. Course grids do not prove personal allocations or calendar dates. 5-minute personal cache; refresh checks school. Waits 20s; poll only running jobs. Page with next_offset. Give a concise table."""
     from . import timetable
-    args=dict(academic_year=academic_year,semester=semester,start=start,end=end,item_id=item_id,
+    args=dict(academic_year=academic_year,semester=semester,week=week,start=start,end=end,item_id=item_id,
               view=view,refresh=refresh,offset=offset,limit=limit)
     timetable.validate(args)
     if item_id:
@@ -402,12 +409,48 @@ def study_events(source: Literal["all","academic_dates","physics_events"] = "all
     return result(campus_events.read(store(),dict(source=source,academic_year=academic_year,
         start=start,end=end,query=query,refresh=refresh,offset=offset,limit=limit)),"full")
 
+@mcp.tool(annotations=WEB, structured_output=False)
+async def study_more(mode: Literal["list","describe","call"] = "list", query: str = "",
+                     tool: str = "", arguments: dict | None = None) -> CallToolResult:
+    """Discover advanced operations by keyword; describe one tool's schema, then call it with arguments. Tasks, collections, services, preferences and calendars share the same validated core."""
+    from .daily_tools import DAILY
+    allowed={entry.name:entry for entry in mcp._tool_manager.list_tools()
+             if entry.name not in DAILY and entry.name not in {"study_capture","study_download_resource","study_route"}}
+    if mode=="list":
+        words=query.casefold().split()
+        aliases={"待办":"task", "任务":"task", "收藏":"collect", "设置":"preferences", "服务":"service", "日历":"calendar", "计划":"plan"}
+        words=[aliases.get(word,word) for word in words]
+        rows=[{"tool":name,"description":entry.description.split("\n")[0]}
+              for name,entry in sorted(allowed.items())
+              if not words or all(word in (name+" "+entry.description).casefold() for word in words)]
+        return result({"tools":rows[:6],"matched":len(rows),"refine_query":len(rows)>6,
+                       "next_step":"Use mode=describe and the selected tool before calling it."})
+    if tool not in allowed:
+        raise ValueError("Choose an advanced tool returned by study_more(mode='list'); daily tools are called directly.")
+    entry=allowed[tool]
+    if mode=="describe":
+        from .protocol import portable_schema
+        return result({"tool":tool,"description":entry.description,
+                       "inputSchema":portable_schema(entry.parameters),
+                       "annotations":entry.annotations.model_dump(exclude_none=True) if entry.annotations else {},
+                       "next_step":"Call study_more(mode='call', tool=tool, arguments={...}) with these parameters."},"full")
+    # The original function validates arguments and returns the same result as the full catalog.
+    return await entry.run(arguments or {}, context=mcp.get_context(), convert_result=False)
+
+
 TOOL_PROFILE=os.environ.get("UOE_TOOL_PROFILE","full")
-if TOOL_PROFILE not in ("student","full"):
-    raise ValueError("UOE_TOOL_PROFILE must be student or full.")
-if TOOL_PROFILE=="student":
+if TOOL_PROFILE not in ("daily","student","full"):
+    raise ValueError("UOE_TOOL_PROFILE must be daily, student or full.")
+if TOOL_PROFILE in ("daily","student"):
     for _name in ("study_capture","study_download_resource","study_route"):
         mcp.remove_tool(_name)
+if TOOL_PROFILE=="daily":
+    from .daily_tools import DAILY, INSTRUCTIONS
+    mcp.visible_tools=set(DAILY)
+    mcp.descriptions=DAILY
+    mcp._mcp_server.instructions=INSTRUCTIONS
+else:
+    mcp.remove_tool("study_more")
 
 def main():
     mcp.run(transport="stdio")
