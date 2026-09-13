@@ -22,7 +22,9 @@ mcp = PortableFastMCP("UoE Companion",
     website_url="https://github.com/saigyujikingyo-png/edinburgh-study-agent",
     icons=[Icon(src="https://raw.githubusercontent.com/saigyujikingyo-png/edinburgh-study-agent/main/assets/icon.png",
                 mimeType="image/png",sizes=["512x512"])],
-    instructions="For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
+    instructions="For connection checks call study_status once and reply briefly; do not inspect host files or start personal onboarding. For your own marks/grades/history use study_results(academic_year='all') directly; no service discovery or repeated section guesses. "
+    "A returned terminal state already contains results; poll only queued/running jobs. "
+    "For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
     "Never use screenshots or coordinate clicks. Download files with study_download_files without Save As. For EUCLID, events, internships and other resources use study_services and study_read_service; organise them with study_collect and local tasks. Read verified documents using study_read_file. "
     "These tools automate supported school DOM pages, store dated evidence and tasks, and download verified files; no registered university REST integration. "
     "Compact responses are default; use next_offset to page and detail=full only when needed. study_school_job waits up to 20 seconds; do not rapid-poll. "
@@ -50,7 +52,7 @@ def result(value: dict, detail: str = "compact") -> CallToolResult:
 
 @mcp.tool(annotations=READ, structured_output=False)
 def study_status(include_capabilities: bool = False) -> CallToolResult:
-    """Read cache freshness and previous authentication observations. Set include_capabilities for implemented, missing and unverified features."""
+    """Check the UoE connection with this single call, then briefly confirm status; no host config inspection or personal onboarding needed. Read cache freshness and previous authentication observations. Set include_capabilities for implemented, missing and unverified features."""
     value=store().status()
     value["audience"]="students"
     value["tool_profile"]=TOOL_PROFILE
@@ -209,16 +211,33 @@ def study_services(query: str = "", detail: Literal["compact","full"] = "compact
     return result(services.directory(store(), query, locale),detail)
 
 @mcp.tool(annotations=WEB, structured_output=False)
+def study_results(academic_year: str = "all", refresh: bool = False) -> CallToolResult:
+    """Read your own EUCLID course marks, grades and academic history (历年成绩) in one call. academic_year: all (default), current or YYYY/YY. Returns dated structured results across loaded year panels, including blank marks. Reuses a 5-minute cache; refresh=True checks school now. Waits up to 20s internally; only poll study_school_job if still running. This is read-only school access, not grade editing or an official transcript."""
+    from .results import validate_year
+    validate_year(academic_year)
+    value=school.start_job(store(),"results",{"academic_year":academic_year,"refresh":refresh})
+    if value["state"] not in school.TERMINAL:
+        value=school.wait_job(store(),value["job_id"],20)
+    return result(page_job(value,0,100))
+
+
+@mcp.tool(annotations=WEB, structured_output=False)
 def study_read_service(service_id: str, item_id: str | None = None, query: str = "",
-                       max_pages: int = 3, section: Literal["Programme", "Courses", "Assessment", "Documents", "Progression & awards", "Scholarships and funding", "Personal details", "Immigration details"] | None = None) -> CallToolResult:
-    """Read a school service through the plugin-owned SSO session, returning a job_id to poll. Use service ids from study_services. Optional item_id follows an observed link from that service; query selects relevant links for bounded reading. For formal enrolments use service_id=euclid and section=Courses. The section enum lists observed read-only EUCLID labels. Captures text and links in the central search index. Does not submit forms, applications or change school records."""
+                       max_pages: int = 3, section: Literal["Programme", "Courses", "Assessment", "Documents", "Progression & awards", "Scholarships and funding", "Personal details", "Immigration details"] | None = None,
+                       academic_year: str | None = None) -> CallToolResult:
+    """Read a school service through the plugin-owned SSO session, returning a job_id to poll. Use service ids from study_services. Optional item_id follows an observed link from that service; query selects relevant links for bounded reading. For own marks/grades and historical course results use study_results directly. For formal enrolments use service_id=euclid and section=Courses; academic_year selects all/current/YYYY/YY there. query filters links, not year tabs. The section enum lists observed read-only EUCLID labels. Captures text and links in the central search index. Does not submit forms, applications or change school records."""
     services.service(service_id)
+    if academic_year is not None:
+        from .results import validate_year
+        validate_year(academic_year)
+        if service_id != "euclid" or section != "Courses":
+            raise ValueError("academic_year applies to EUCLID Courses; use study_results for own course results.")
     if not 1 <= max_pages <= 10 or len(query) > 300:
         raise ValueError("max_pages 1..10; query up to 300 characters.")
     if item_id:
         store().item(item_id)
     return result(school.start_job(store(), "service", dict(service_id=service_id,item_id=item_id,
-                        query=query,max_pages=max_pages,section=section)))
+                        query=query,max_pages=max_pages,section=section,academic_year=academic_year)))
 
 @mcp.tool(annotations=WRITE, structured_output=False)
 def study_collect(item_id: str, collection: str = "Inbox", tags: list[str] | None = None,

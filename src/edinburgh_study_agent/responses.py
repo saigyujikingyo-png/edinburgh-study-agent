@@ -19,7 +19,7 @@ def compact(value):
     for key,entry in value.items():
         if entry is None or (is_item and key not in ITEM_FIELDS):
             continue
-        if key in {"worker_pid","topics","launch_label","profile_location","data_directory"}:
+        if key in {"worker_pid","timings_ms","topics","launch_label","profile_location","data_directory"}:
             continue
         if key=="excerpt" and is_item:
             if entry==value.get("title"):

@@ -2,6 +2,7 @@
 CAPABILITIES = {
     "implemented": [
         "Learn course/content discovery, verified downloads and document text reading",
+        "Own EUCLID course marks and grades across loaded academic years; read-only, not an official transcript",
         "Supported MyEd/EUCLID student pages and Timetabler displayed-page reading",
         "Bounded official careers/events pages and MyCareerHub links",
         "Dated evidence, collections, tags, local tasks and draft plans",

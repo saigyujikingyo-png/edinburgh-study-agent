@@ -21,7 +21,7 @@ Complete campus sign-in and MFA in the dedicated local window when a live job re
 - School resources: `study_services`, `study_read_service`, `study_search`.
 - Organisation: `study_home`, collections, tasks, agenda and study-plan tools.
 
-The full catalog has 31 operations; the student profile has 28. Refresh the registered plugin's tool catalog after runtime upgrades. Server instructions and `study_help` supply workflows to hosts without the optional Codex skill.
+The full catalog has 32 operations; the student profile has 29. Refresh the registered plugin's tool catalog after runtime upgrades. Server instructions and `study_help` supply workflows to hosts without the optional Codex skill.
 
 ## Deploy on another machine
 

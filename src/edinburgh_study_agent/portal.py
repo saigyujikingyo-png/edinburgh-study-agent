@@ -16,6 +16,10 @@ SNAPSHOT = """() => {
     links:[...document.querySelectorAll('a[href]')].filter(a=>visible(a)&&a.innerText.trim())
       .map(a=>({title:a.innerText.trim().slice(0,500),url:a.href})).slice(0,300)};
 }"""
+# Fixed, parameter-free SSO entry observed in MyEd's "My student record" link.
+# This literal is a login route, not a saved SITS session URL.
+EUCLID_ENTRY = "https://www.star.euclid.ed.ac.uk/urd/sits.urd/run/siw_sso.token"
+
 LOGIN_LABELS = {
     "www.myed.ed.ac.uk": ["Login to MyEd", "Log in", "Login"],
     "myed.ed.ac.uk": ["Login to MyEd", "Log in", "Login"],
@@ -25,11 +29,31 @@ LOGIN_LABELS = {
 }
 READ_SECTIONS = re.compile(r"(?i)^(my student record|my courses|courses|course results|results|assessment|progression & awards|scholarships and funding|programme|programme of study|progression|documents|attendance|personal details|finance|fees|immigration details)$")
 
+CAMPUS_READY = r"""() => {
+  if (document.readyState === 'loading') return false;
+  const host=location.hostname;
+  if (['www.myed.ed.ac.uk','myed.ed.ac.uk'].includes(host)) {
+    return [...document.querySelectorAll('a[href]')].some(a =>
+      (a.textContent || '').trim().toLowerCase() === 'my student record') ||
+      [...document.querySelectorAll('button,[role="button"]')].some(b =>
+        (b.getAttribute('aria-label') || b.title || b.textContent || '').trim() === 'Accounts' && !b.disabled && !!b.getClientRects().length);
+  }
+  return (host === 'ed.ac.uk' || host.endsWith('.ed.ac.uk')) &&
+    document.title.startsWith('EUCLID:') &&
+    /Logged in:/i.test((document.body?.innerText || '').slice(0,600)) &&
+    [...document.querySelectorAll('a[href]')].some(a =>
+      (a.textContent || '').trim() === 'Courses');
+}"""
+
 def wait_page(page, seconds=30):
     deadline=time.monotonic()+seconds
     previous,stable=None,0
     while time.monotonic()<deadline:
         try:
+            # Use known navigation readiness instead of waiting for unrelated
+            # MyEd widgets to settle. Unknown pages retain the bounded fallback.
+            if page.evaluate(CAMPUS_READY):
+                return
             signature=page.locator("body").inner_text(timeout=1500)[:60000]
             stable=stable+1 if signature==previous else 0
             previous=signature
@@ -163,9 +187,21 @@ def read_service(store,page,args,progress):
         if saved_student_page:
             candidate=item["title"].split(":",1)[1].split(" - ",1)[0].strip()
             saved_section=candidate if READ_SECTIONS.fullmatch(candidate) else None
-    page.goto(content_url(target),wait_until="domcontentloaded")
-    page=follow_sso(page,store)
-    if spec.get("launch_label") and (not args.get("item_id") or saved_student_page):
+    launch_from_myed=bool(spec.get("launch_label") and (not args.get("item_id") or saved_student_page))
+    direct_ready=False
+    if spec["id"]=="euclid" and launch_from_myed:
+        # Reuse SSO directly instead of booting MyEd's entire SPA for every read.
+        # Fall back once to the observed MyEd launch route if the entry changes.
+        try:
+            page.goto(EUCLID_ENTRY,wait_until="domcontentloaded")
+            page=follow_sso(page,store)
+            direct_ready=page.title().startswith("EUCLID:") and authentication(page)=="authenticated"
+        except Exception:
+            direct_ready=False
+    if not direct_ready:
+        page.goto(content_url(target),wait_until="domcontentloaded")
+        page=follow_sso(page,store)
+    if launch_from_myed and not direct_ready:
         accounts=page.get_by_role("button",name="Accounts",exact=True)
         if accounts.count() and accounts.first.is_visible():
             accounts.first.click()
@@ -208,6 +244,20 @@ def read_service(store,page,args,progress):
             "page_count":0,"warning":"This service redirected to an external provider which has not been integrated."}
         record_check(store,spec["id"],result)
         return result
+    if spec["id"] == "euclid" and section == "Courses":
+        from .results import read_results
+        year = args.get("academic_year")
+        # Older tool catalogs supplied a year through query. Honour that exact
+        # form without allowing arbitrary selectors or treating it as a link.
+        if not year and re.fullmatch(r"\d{4}/\d{2}", query):
+            year = query
+        if args.get("results_only") or year:
+            if auth != "authenticated":
+                return {"live":True,"service_id":"euclid","authentication":auth,
+                    "coverage":"unavailable","failed":["Authenticated student record was not observed."],"items":[]}
+            value=read_results(store, page, year or "all")
+            record_check(store,spec["id"],value)
+            return value
     queue,visited,results,failures=[],set(),[],[]
     words=[w.casefold() for w in re.split(r"\s+",query) if w]
     for index in range(max_pages):
@@ -269,5 +319,7 @@ def read_service(store,page,args,progress):
             "coverage":"partial" if results else "unavailable","authentication":auth,"entry_url":spec["url"],
             "page_count":len(results),"pages":results,"failed":failures,
             "source_content_is_untrusted":True,"note":"Only the displayed pages and their links were read. No forms, applications or school records were changed."}
+    if spec["id"] == "euclid" and section in {"Courses", "Assessment"}:
+        result["next_tool"] = "study_results(academic_year='all') for course marks/grades across years. query filters links; it does not select an academic year."
     record_check(store,spec["id"],result)
     return result

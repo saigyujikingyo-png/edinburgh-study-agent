@@ -73,7 +73,7 @@ References: [official MCP client](https://github.com/deepseek-ai/deepseek-harnes
 
 ## Student tools and language
 
-New generated local-host entries use `UOE_TOOL_PROFILE=student`: 28 tools for students. It hides the three legacy developer tools `study_capture`, `study_download_resource` and `study_route`. `full` exposes 31 tools, including all 28 pre-0.5 IDs and three new tools. Existing Work connections default to `full` for compatibility. Server descriptions and on-demand help apply without installing the Codex skill.
+New generated local-host entries use `UOE_TOOL_PROFILE=student`: 29 tools for students. It hides the three legacy developer tools `study_capture`, `study_download_resource` and `study_route`. `full` exposes 32 tools. Version 0.5.2 adds `study_results` to both profiles. Existing Work connections default to `full` for compatibility. Server descriptions and on-demand help apply without installing the Codex skill.
 
 Ask in your preferred language, for example “Show my study agenda” or “显示本周学习日程”. Use `study_preferences(locale="auto")` to follow each request's language. See [language scope](LANGUAGES.md).
 
@@ -86,7 +86,7 @@ Ask in your preferred language, for example “Show my study agenda” or “显
 | ChatGPT cloud Work | 0.5.1: live Learn refresh, then status/cached lookup again after consolidation | Only tested account/service scope is established |
 | Claude Desktop | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a Claude model turn have not been verified |
 | Claude Code | Portable entry and official-CLI installer implemented | CLI installation and model roundtrip not tested on the acceptance host |
-| WorkBuddy | Existing user configuration merged and backed up; same installed stdio runtime passes protocol checks | Application reload and a WorkBuddy model turn have not been verified |
+| WorkBuddy | A real Hy4 preview (high) trial connected successfully but failed historical grade retrieval in 0.5.1. Version 0.5.2 repairs the adapter and adds a direct results tool; see [diagnosis](WORKBUDDY_RESULTS.md). | The repaired MCP/runtime test is separate from a new WorkBuddy model turn |
 | DeepSeek Harness | Official bridge successfully discovered 28 tools, accepted schemas, executed multilingual catalog/preferences and task/agenda calls, rendered text and propagated errors | Registration/lifecycle fixture, not a full Harness agent/model turn |
 | Generic MCP | Real stdio initialization/list/call checks for both tool profiles | Individual clients and model behavior require their own acceptance |
 

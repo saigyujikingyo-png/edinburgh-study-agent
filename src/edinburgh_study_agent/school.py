@@ -23,7 +23,7 @@ from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, COURSE_SCAN, RES
                          COURSE_ID, course_items, resource_items, observation, learn_url)
 from .downloads import download_resource, list_downloads, safe_filename, verified_copy
 
-ACTIONS = {"login", "courses", "resources", "download", "myed", "service", "read_resource"}
+ACTIONS = {"login", "courses", "resources", "download", "myed", "service", "read_resource", "results"}
 TERMINAL = {"complete", "partial", "needs_login", "failed", "cancelled"}
 JOB_ID = re.compile(r"^[a-f0-9]{32}$")
 
@@ -112,6 +112,9 @@ def wait_job(store: Store,job_id: str,wait_seconds: float = 20,if_updated_at: st
 def cached_operation(store: Store,action: str,args: dict):
     if args.get("refresh",action=="download"):
         return None
+    if action=="results":
+        from .results import cached_results
+        return cached_results(store,args.get("academic_year","all"))
     if action=="download":
         saved=[verified_copy(store,key) for key in dict.fromkeys(args["item_ids"])]
         if all(saved):
@@ -155,10 +158,16 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
         key=uuid.uuid4().hex
         stamp=now_utc().isoformat()
         write_json(job_path(store,key),{"job_id":key,"action":action,"state":"complete",
-            "created_at":stamp,"updated_at":stamp,"progress":"Verified local copy ready.",
+            "created_at":stamp,"updated_at":stamp,"progress":"Dated local result ready.",
             "result":cached,"browser_started":False})
         return read_job(store,key)
     active = session_status(store)["active_jobs"]
+    if action == "results":
+        for prior in active:
+            if prior["action"] == "results":
+                record=json.loads(job_path(store,prior["job_id"]).read_text(encoding="utf-8"))
+                if record.get("arguments")==arguments:
+                    return read_job(store,prior["job_id"]) | {"reused_active_job":True}
     if action == "login":
         prior = next((j for j in active if j["action"] == "login"), None)
         if prior:
@@ -574,6 +583,12 @@ def execute_job(store: Store, job_id: str):
     path = job_path(store,job_id)
     record = json.loads(path.read_text(encoding="utf-8"))
     record["worker_pid"] = os.getpid()
+    started=time.monotonic()
+    record["timings_ms"]={}
+    try:
+        record["timings_ms"]["worker_start_delay"]=round((now_utc()-datetime.fromisoformat(record["created_at"])).total_seconds()*1000)
+    except (KeyError, ValueError, TypeError):
+        pass  # Optional telemetry must not prevent an older job from reporting errors.
     def progress(message: str, state: str = "running"):
         record.update(state=state,progress=message,updated_at=now_utc().isoformat())
         write_json(path,record)
@@ -581,8 +596,11 @@ def execute_job(store: Store, job_id: str):
         action, args = record["action"], record["arguments"]
         progress("Waiting for the private school browser.")
         with browser_context(store,interactive=action == "login") as context:
+            record["timings_ms"]["browser_ready"]=round((time.monotonic()-started)*1000)
             page = context.pages[0] if context.pages else context.new_page()
             if action == "login":
+                from .results import invalidate_cache
+                invalidate_cache(store)
                 page.goto(LEARN_HOME,wait_until="domcontentloaded")
                 progress("Complete the campus sign-in and MFA in the dedicated Chrome window. It closes after verification.",
                          "waiting_for_login")
@@ -598,6 +616,10 @@ def execute_job(store: Store, job_id: str):
                     time.sleep(1)
                 else:
                     raise LoginRequired()
+            elif action == "results":
+                from .portal import read_service
+                result = read_service(store,page,{"service_id":"euclid","section":"Courses",
+                    "max_pages":1,"results_only":True,**args},progress)
             elif action == "courses":
                 result = list_courses(store,page,args,progress)
             elif action == "resources":
@@ -611,6 +633,8 @@ def execute_job(store: Store, job_id: str):
                 result = read_service(store,page,{"service_id":"myed",**args},progress)
             else:
                 raise ValueError("Unsupported school action.")
+            record["timings_ms"]["read_complete"]=round((time.monotonic()-started)*1000)
+        record["timings_ms"]["worker_total"]=round((time.monotonic()-started)*1000)
         record["result"] = result
         state = "needs_login" if result.get("needs_login") else "partial" if result.get("failed") or result.get("coverage") in {"partial","entry_only","external_provider","unavailable"} else "complete"
         progress("School operation finished.",state)

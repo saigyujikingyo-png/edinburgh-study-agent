@@ -3,7 +3,9 @@ from .localization import LANGUAGES, presentation
 
 GUIDANCE = {
  "student": {
-  "workflow": ["Use study_home for a cached overview; use study_live_courses for current Learn membership and EUCLID Courses for formal enrolments.",
+  "workflow": ["For connection checks, call study_status once and reply briefly. Do not read host configuration or ask unrelated personal questions.",
+    "For your own marks/grades/history, call study_results(academic_year='all') directly. It reads loaded EUCLID year panels together. Only poll if still running; do not rediscover services or retry Assessment/Documents for course marks.",
+    "Use study_home for a cached overview; use study_live_courses for current Learn membership and EUCLID Courses for formal enrolments.",
     "Use study_live_resources on a known course, then study_download_files on observed resource IDs. Poll study_school_job with its default wait until terminal.",
     "Read saved files using study_read_file with next_offset; use study_read_resource(refresh=False) to reuse verified copies.",
     "Use study_agenda for cached classes/deadlines and active local tasks. Import a current ICS export for structured timetable conflicts.",
