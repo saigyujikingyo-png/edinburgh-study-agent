@@ -1,4 +1,4 @@
-param([switch]$ConnectOnce)
+﻿param([switch]$ConnectOnce)
 $ErrorActionPreference = 'Stop'
 $studyRoot = Join-Path ([Environment]::GetFolderPath('UserProfile')) '.edinburgh-study-agent'
 $workRoot = Join-Path $studyRoot 'work'
@@ -14,6 +14,7 @@ try {
     $failures = 0
     while ($true) {
         $secureKey = $null
+        $connectStarted = $false
         $priorControlKey = [Environment]::GetEnvironmentVariable('CONTROL_PLANE_API_KEY','Process')
         $priorUtf8 = [Environment]::GetEnvironmentVariable('PYTHONUTF8','Process')
         try {
@@ -29,6 +30,7 @@ try {
             [Environment]::SetEnvironmentVariable('PYTHONUTF8','1','Process')
             $runtimeKey = $null
             $mcpCommand = '"' + $settings.python.Replace('\','/') + '" -m edinburgh_study_agent.server'
+            $connectStarted = $true
             $connectOutput = & $settings.client runtimes connect --json --alias $settings.alias --profile $settings.alias --profile-dir $settings.profile_directory --tunnel-id $settings.tunnel_id --mcp-command $mcpCommand --runtime-api-key env:CONTROL_PLANE_API_KEY 2>&1
             if ($LASTEXITCODE -ne 0) { throw 'The private tunnel connection failed. Check the authorized identity and runtime-key permissions.' }
             # Connection creation can finish before the MCP child becomes ready.
@@ -41,7 +43,6 @@ try {
                 Start-Sleep -Seconds 1
             }
             if (-not $status -or -not $status.process_running -or -not $status.healthy -or -not $status.ready) {
-                $stopOutput = & $settings.client runtimes stop $settings.alias 2>&1
                 throw 'The private connection did not become ready.'
             }
             [Environment]::SetEnvironmentVariable('CONTROL_PLANE_API_KEY',$priorControlKey,'Process')
@@ -71,6 +72,29 @@ try {
                 if (([DateTime]::UtcNow - $readyAt).TotalSeconds -ge 300) { $failures = 0 }
             }
         } catch {
+            # The client can spawn a daemon before connect itself fails. Clean the
+            # exact owned profile even when the registry has no successful entry.
+            if ($connectStarted) {
+                $aliasPattern = '(?i)(?:^|\s)--profile\s+"?' + [regex]::Escape($settings.alias) + '"?(?=\s|$)'
+                $directoryPattern = '(?i)(?:^|\s)--profile-dir\s+"?' + [regex]::Escape($settings.profile_directory) + '"?(?=\s|$)'
+                $snapshot = @(Get-CimInstance Win32_Process)
+                $owned = @($snapshot | Where-Object {
+                    $_.ExecutablePath -ieq $settings.client -and
+                    $_.CommandLine -match $aliasPattern -and $_.CommandLine -match $directoryPattern
+                })
+                $children = @($snapshot | Where-Object {
+                    $_.ParentProcessId -in @($owned.ProcessId) -and
+                    $_.ExecutablePath -ieq $settings.python -and
+                    $_.CommandLine -match '(?:^|\s)-m\s+edinburgh_study_agent\.server(?:\s|$)'
+                })
+                try { $stopOutput = & $settings.client runtimes stop $settings.alias 2>&1 } catch { $stopOutput = $null }
+                foreach ($candidate in @($owned) + @($children)) {
+                    $current = Get-CimInstance Win32_Process -Filter ('ProcessId = ' + $candidate.ProcessId)
+                    if ($current -and $current.CreationDate -eq $candidate.CreationDate -and $current.ExecutablePath -ieq $candidate.ExecutablePath) {
+                        Stop-Process -Id $candidate.ProcessId -ErrorAction Stop
+                    }
+                }
+            }
             $failures += 1
             $delay = if ($failures -le $retryDelays.Count -and -not $ConnectOnce) { $retryDelays[$failures-1] } else { 0 }
             $failure = [ordered]@{

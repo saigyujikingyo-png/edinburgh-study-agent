@@ -112,6 +112,7 @@ switch ($args[1]) {
         $global:Trace.ConnectCalls++
         $global:Trace.ConnectEnvironmentValid = ($env:CONTROL_PLANE_API_KEY.StartsWith('s' + 'k-') -and $env:PYTHONUTF8 -eq '1')
         '{}'
+        if ($global:Fixture.connectFails) { $global:LASTEXITCODE = 1 }
     }
     'status' {
         $index = [Math]::Min($global:Trace.StatusCalls, $global:Fixture.statuses.Count - 1)
@@ -263,3 +264,23 @@ def test_stop_refuses_a_different_scheduled_task_before_touching_processes(power
     assert trace["Failed"] is True
     assert trace["RegistryStops"] == trace["SnapshotReads"] == 0
     assert trace["DisabledTasks"] == trace["StoppedTasks"] == trace["Killed"] == []
+
+
+def test_failed_connect_cleans_unregistered_worker_before_retry(powershell, tmp_path):
+    config = setup_fixture(tmp_path, "run")
+    config["connectFails"] = True
+    settings = config["settings"]
+    config["snapshot"] = [
+        process(201, settings["client"], daemon_command(settings)),
+        process(202, settings["python"], 'python -m edinburgh_study_agent.server', parent=201),
+        process(203, settings["client"], daemon_command(settings, alias="other-profile")),
+    ]
+    config["current"] = config["snapshot"]
+    trace = invoke(powershell, tmp_path, config)
+    assert trace["Failed"] or trace["ExitCode"] != 0
+    assert trace["ConnectCalls"] == 1
+    assert trace["StatusCalls"] == 0
+    assert trace["RegistryStops"] == 1
+    assert trace["Killed"] == [201, 202]
+    assert trace["EnvironmentRestored"] is True
+    assert trace["error"]["ready"] is False
