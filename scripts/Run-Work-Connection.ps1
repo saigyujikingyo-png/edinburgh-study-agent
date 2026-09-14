@@ -31,10 +31,19 @@ try {
             $mcpCommand = '"' + $settings.python.Replace('\','/') + '" -m edinburgh_study_agent.server'
             $connectOutput = & $settings.client runtimes connect --json --alias $settings.alias --profile $settings.alias --profile-dir $settings.profile_directory --tunnel-id $settings.tunnel_id --mcp-command $mcpCommand --runtime-api-key env:CONTROL_PLANE_API_KEY 2>&1
             if ($LASTEXITCODE -ne 0) { throw 'The private tunnel connection failed. Check the authorized identity and runtime-key permissions.' }
-            $statusOutput = & $settings.client runtimes status $settings.alias --json 2>&1
-            if ($LASTEXITCODE -ne 0) { throw 'The private tunnel status check failed.' }
-            $status = ($statusOutput -join [Environment]::NewLine) | ConvertFrom-Json
-            if (-not $status.process_running -or -not $status.healthy -or -not $status.ready) { throw 'The private connection is not ready.' }
+            # Connection creation can finish before the MCP child becomes ready.
+            # Poll that same daemon; immediately reconnecting leaks duplicate workers.
+            $status = $null
+            for ($readyAttempt = 0; $readyAttempt -lt 20; $readyAttempt++) {
+                $statusOutput = & $settings.client runtimes status $settings.alias --json 2>&1
+                if ($LASTEXITCODE -eq 0) { $status = ($statusOutput -join [Environment]::NewLine) | ConvertFrom-Json }
+                if ($status -and $status.process_running -and $status.healthy -and $status.ready) { break }
+                Start-Sleep -Seconds 1
+            }
+            if (-not $status -or -not $status.process_running -or -not $status.healthy -or -not $status.ready) {
+                $stopOutput = & $settings.client runtimes stop $settings.alias 2>&1
+                throw 'The private connection did not become ready.'
+            }
             [Environment]::SetEnvironmentVariable('CONTROL_PLANE_API_KEY',$priorControlKey,'Process')
             [Environment]::SetEnvironmentVariable('PYTHONUTF8',$priorUtf8,'Process')
             $secureKey.Dispose()

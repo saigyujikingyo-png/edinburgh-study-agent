@@ -2,6 +2,7 @@
 CAPABILITIES = {
     "implemented": [
         "Learn course/content discovery, verified downloads and document text reading",
+        "Batch export of verified cached originals as MCP file attachments or a ZIP with manifest; host and cloud receipts remain separate",
         "Own EUCLID course marks and grades across loaded academic years; read-only, not an official transcript",
         "Supported MyEd/EUCLID student pages",
         "Personal Timetabler published-activity export, academic year/semester filters, concise weekly patterns and dated cache",
@@ -15,7 +16,7 @@ CAPABILITIES = {
         "Ten-language service catalog, persistent preferences and per-call language overrides",
         "Portable MCP schemas, student tool profile and host configuration generator/merge installers",
         "Windows x64 setup ZIP with bundled Python, local bilingual wizard, checksum verification, configuration backups and runtime rollback",
-        "13-tool daily profile with on-demand advanced operations; original student/full profiles remain compatible",
+        "14-tool daily profile with on-demand advanced operations; original student/full profiles remain compatible",
         "Official DeepSeek MCP bridge integration tested with a registration fixture",
         "Local ICS import/export; one private profile and connection per person",
     ],

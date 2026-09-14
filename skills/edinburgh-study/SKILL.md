@@ -34,7 +34,7 @@ Use `study_help(topic="student"|"hosts"|"languages"|"capabilities")` for on-dema
 
 `study_agenda` combines cached classes, deadlines and active local tasks. Page with next_offset; show unknown_dates and dated coverage. London dates define the requested range, display_timezone only changes added display timestamps. Date-only deadlines retain their day without an invented time. Local done is not university submission. Refresh study_timetable to import the current personal activity snapshot for planning. Official ICS imports remain available for other calendars.
 
-The Windows wizard selects the 13-tool daily profile; advanced operations are available through `study_more`. Other generated local-host entries use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
+The Windows wizard selects the 14-tool daily profile; advanced operations are available through `study_more`. Other generated local-host entries use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
 
 ## Start from the request
 
@@ -87,3 +87,5 @@ Share the public source/install package, never a personal campus profile or priv
 ## Missing tools in Chat or cloud Work
 
 The visible plugin name/icon alone is not proof of a callable cloud connection. A personal local marketplace package uses local stdio; Chat and cloud Work need the user's registered app installed **and connected** in ChatGPT. Search the actual available tools before declaring them absent. If the host reports authentication accepted and asks to retry, retry the affected read once. Do not request a new campus login for a missing-tool or host-connection error. After reconnecting, verify actual `study_status` and bounded `study_search` results; local runtime status is insufficient. Installation details: `docs/WORK_SETUP.md`. Each person must bind their own app; never use another person's private connection.
+
+For original files needed by Chat or another connector, use `study_export_files` with selected cached resource item IDs. `files` returns original MCP attachments; `bundle` returns a ZIP with an integrity manifest; `manifest` returns metadata only. Use only host-created file references after receipt. Never pass a campus-computer path or `uoe://` URI to a cloud uploader, paste base64 into a message, or regenerate the original from extracted text. Check destination duplicates and verify uploaded bytes before marking migration complete.

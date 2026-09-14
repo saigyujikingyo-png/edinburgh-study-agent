@@ -11,6 +11,7 @@ GUIDANCE = {
     "Use study_materials(course=...,query=...) to find files; operation=read/download handles a unique observed item directly. Matches can be cached with visible timestamps. refresh=True checks the source; no manual Save As.",
     "Use study_messages for recent Learn activity or course inbox unread counters. Full Learn conversation history is not yet covered. University email belongs in Outlook and is outside this plugin scope. Zero unread is not an empty inbox.",
     "Use study_events for the supported official academic dates/public event feeds. Source coverage is explicit; do not describe it as all University events.",
+    "For originals needed as host attachments or cloud uploads, call study_export_files with selected cached resource IDs (files or bundle). Use the host-created attachment reference, not a campus path or uoe:// URI. Keep filenames from the manifest, check destination duplicates and verify destination bytes before marking migration complete. manifest mode is metadata only; never paste base64 or regenerate originals as text.",
     "Read saved files using study_read_file with next_offset; use study_read_resource(refresh=False) to reuse verified copies.",
     "Use study_agenda for cached classes/deadlines and active local tasks. Refresh study_timetable for personal classes; import an official ICS for other calendars.",
     "Create a task only with explicit effort; check existing tasks first to avoid duplicates. study_plan is a local draft; done never means submitted.",
