@@ -24,6 +24,8 @@ Poll school jobs with the default `wait_seconds=20` (maximum 25), optionally pas
 
 For an already downloaded document, use `study_read_file` directly. `study_read_resource(refresh=False)` and `study_download_files(refresh=False)` reuse checksum-verified local files without starting the browser where possible. Use `refresh=True` when the user needs current remote files; local reuse does not check remote freshness.
 
+Results include `_contract` version metadata. Treat `isError` with a structured `error` as a failed call; a valid receipt with `state="failed"` describes a failed school job. Preserve returned identifiers and inspect their status before retrying. Never repeat a write to repair output formatting. Detailed output schemas are available through `study_help(topic="schemas",tool=...)` or `study_more(mode="describe",tool=...)`; ordinary queries do not need schema discovery.
+
 ## Student edition and languages
 
 Use `study_help(topic="student"|"hosts"|"languages"|"capabilities")` for on-demand guidance, including in hosts that do not load skills. `study_preferences()` reads persistent settings; only supply fields the user wants changed. Support the user's language without changing official names, IDs, URLs, filenames or quoted evidence. Add translated names alongside originals when requested. Do not assume language determines timezone.
@@ -32,7 +34,7 @@ Use `study_help(topic="student"|"hosts"|"languages"|"capabilities")` for on-dema
 
 `study_agenda` combines cached classes, deadlines and active local tasks. Page with next_offset; show unknown_dates and dated coverage. London dates define the requested range, display_timezone only changes added display timestamps. Date-only deadlines retain their day without an invented time. Local done is not university submission. Refresh study_timetable to import the current personal activity snapshot for planning. Official ICS imports remain available for other calendars.
 
-New local-host configs use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
+The Windows wizard selects the 13-tool daily profile; advanced operations are available through `study_more`. Other generated local-host entries use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
 
 ## Start from the request
 

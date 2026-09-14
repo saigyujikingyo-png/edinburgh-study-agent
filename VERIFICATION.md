@@ -1,5 +1,13 @@
 # Verification
 
+## 0.7.1 output-contract implementation (2026-09-14)
+
+The current implementation declares version 1 output schemas for all 37 public tool names: 36 full, 33 student and 13 daily tools. All 21 advanced operations have on-demand output-schema descriptions. Successes retain their fields and add `_contract`; failures return a structured, redacted error. The server validates direct and dispatched results, including the selected payload schema for all 11 school-job actions, with cached validators.
+
+The final local 0.7.1 source run passed **235 tests in 21.14 seconds** on Windows / Python 3.12.14. The real stdio smoke test and all three profile probes passed. See [protocol measurements](docs/CONTRACT_PERFORMANCE.md); the exact release commit's CI and installed-account receipts remain separate evidence. [Contract tests](tests/test_output_contracts.py) cover catalogs, discovery, successful structured/text parity, direct/dispatched task and collection calls, error codes and redaction, invalid-output rejection without repeated writes, lifecycle, dates/nulls, file metadata and deterministic student workflows. Not every operation or live source branch is exercised through a host.
+
+See the [per-tool and per-operation ledger](docs/OUTPUT_CONTRACTS.md) for implemented contracts, checked paths and remaining gates. The 0.7.0 probe with zero output schemas is retained there as a historical baseline. Schemas and stdio success do not establish fresh campus authentication, source completeness, document accuracy, artifact receipt, host/model conversations or actual token/billing savings. Release packaging and each account installation have separate acceptance records; private identities and connection identifiers do not belong in this public file.
+
 ## Chat and cloud Work
 
 0.5.1 recovered a fresh cloud task that had no course tools despite a healthy local tunnel. Actual ordinary Chat status/search and cloud Work status/live Learn refresh both passed after installing and connecting the personal ChatGPT app and adding its private package dependency. See [versioned acceptance](docs/WORK_ACCEPTANCE.md) for the observed scope.
@@ -26,7 +34,7 @@ python scripts/package_plugin.py
 
 The regression suite covers evidence integrity, dates and recurrence, planning, bounded downloads, file integrity, DOM selectors, deferred course rows, course status, folder selection, deep-link recovery, profile locking, worker errors, source boundaries, collections and document-text reading.
 
-Release tests additionally cover staged-data auditing, release allowlists and isolated runtime installation configuration. The real stdio smoke test verifies 31 full-profile tools, structured results, input rejection and an isolated local-task round trip.
+Release tests additionally cover staged-data auditing, release allowlists and isolated runtime installation configuration. The real stdio smoke test checks the advertised full-profile catalog, declared output schemas, versioned structured results, matching JSON text, structured input rejection and an isolated local-task round trip. The output-contract tests cover full, student and daily profile catalogs and advanced schema discovery. These protocol checks use synthetic local data.
 
 CI runs these checks using synthetic data on Windows and Linux, Python 3.11 and 3.12. The Actions result for a commit is the current CI record. It neither accesses a school account nor requires campus or Work secrets.
 
