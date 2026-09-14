@@ -8,7 +8,7 @@ Use synthetic data for cloud tests. Do not copy campus sessions, private coursew
 
 ## Chembridge cloud development
 
-The shared umbrella entrypoint is https://github.com/saigyujikingyo-png/chembridge. Read the current included DEVELOPMENT_PRINCIPLES.md and CODEX_CLOUD.md. Use `bash scripts/setup_codex_cloud.sh` from this repository root for setup and cached-container maintenance. Routine messages between existing user-owned Chembridge tasks are preauthorised under DEVELOPMENT_PRINCIPLES.md section 11. Preserve each task's objective, source ownership and separate acceptance evidence.
+The shared umbrella entrypoint is https://github.com/saigyujikingyo-png/chembridge. Read the current included DEVELOPMENT_PRINCIPLES.md and CODEX_CLOUD.md. Use `bash scripts/setup_codex_cloud.sh` from this repository root for setup and cached-container maintenance. Routine messages between existing user-owned Chembridge tasks are preauthorised under DEVELOPMENT_PRINCIPLES.md section 11; no per-message confirmation is needed within that scope. Preserve each task's objective, source ownership and separate acceptance evidence.
 
 Cloud configuration, portable checks, native execution, model/host acceptance and artifact delivery are separate gates. The known OpenAI local Work project-sync frontend bug remains out of scope; do not repair application caches, registrations or internals for that issue.
 
