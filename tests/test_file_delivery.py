@@ -83,7 +83,7 @@ def synthetic_xlsx():
     (PDF, "handout.pdf", "application/pdf"),
     (synthetic_xlsx(), "past papers.xlsx",
      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-])
+], ids=["pdf", "xlsx"])
 def test_export_supplies_original_bytes_not_only_windows_path(cached_resource, body, filename, mime):
     store, create = cached_resource
     item_id, _ = create(body, filename)
@@ -472,3 +472,14 @@ def test_export_does_not_request_duplicate_widget_registration(public_export_ser
         assert "uploadFile" not in html
         assert "http" not in html
     asyncio.run(check())
+
+
+def test_export_ignores_machine_specific_mime_overrides(cached_resource, monkeypatch):
+    import mimetypes
+    store, create = cached_resource
+    body = synthetic_xlsx()
+    item_id, _ = create(body, "lecture.XLSX")
+    monkeypatch.setitem(mimetypes.types_map, ".xlsx", "application/octet-stream")
+    result = export_files(store, [item_id])
+    assert resources(result)[0].mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    assert raw_resource(resources(result)[0]) == body

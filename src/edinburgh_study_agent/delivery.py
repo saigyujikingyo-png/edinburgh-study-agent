@@ -19,6 +19,17 @@ from .downloads import list_downloads, safe_filename
 from .models import now_utc, safe_url
 
 MAX_FILES = 30
+# Use Python's portable defaults; Windows registry entries can mislabel Office files.
+MIME_TYPES = mimetypes.MimeTypes(filenames=())
+for _extension, _mime in {
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    '.doc': 'application/msword',
+    '.xls': 'application/vnd.ms-excel',
+    '.ppt': 'application/vnd.ms-powerpoint',
+}.items():
+    MIME_TYPES.add_type(_mime, _extension)
 
 
 def _json(value):
@@ -53,7 +64,7 @@ def _read_cached(store, item_id, remaining):
         source = safe_url(record['source_page_url'])
         if urlsplit(source).hostname not in ('learn.ed.ac.uk', 'www.learn.ed.ac.uk'):
             raise ValueError('Export provenance must be an observed Learn page.')
-        mime = mimetypes.guess_type(filename)[0] or 'application/octet-stream'
+        mime = MIME_TYPES.guess_type(filename)[0] or 'application/octet-stream'
         uri = f'uoe://files/{digest}/{quote(filename, safe="")}'
         return {'item_id': item_id, 'filename': filename, 'mime_type': mime,
                 'size_bytes': len(body), 'sha256': digest, 'resource_uri': uri,
