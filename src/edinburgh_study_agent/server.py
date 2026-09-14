@@ -48,9 +48,14 @@ def result(value: dict, detail: str = "compact") -> CallToolResult:
         if settings.get("locale", os.environ.get("UOE_LOCALE", "auto")) != "auto":
             value={**value,"presentation":localization.presentation(store(),saved=settings)}
     value=compact(value) if detail=="compact" else value
-    # Preserve text and structured results for MCP client compatibility.
-    return CallToolResult(content=[TextContent(type="text",text=json.dumps(value,ensure_ascii=False,separators=(",",":")))],
-                          structuredContent=value)
+    # Valid direct Python callers retain the text fallback. Malformed values
+    # reach the public output boundary intact, including any saved identifiers.
+    try:
+        text = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        content = [TextContent(type="text", text=text)]
+    except (TypeError, ValueError, OverflowError):
+        content = []
+    return CallToolResult(content=content, structuredContent=value)
 
 @mcp.tool(annotations=READ, structured_output=False)
 def study_status(include_capabilities: bool = False) -> CallToolResult:
@@ -295,8 +300,13 @@ def study_agenda(start: str | None = None, end: str | None = None, limit: int = 
     return result(agenda.agenda(store(),start,end,limit,offset,locale,display_timezone))
 
 @mcp.tool(annotations=READ, structured_output=False)
-def study_help(topic: Literal["student","hosts","languages","capabilities"] = "student", locale: str | None = None) -> CallToolResult:
+def study_help(topic: Literal["student","hosts","languages","capabilities","schemas"] = "student", locale: str | None = None, tool: str = "") -> CallToolResult:
     """On-demand student workflow, client setup, language and capability guidance. Works in MCP hosts without skills, resources or prompts."""
+    if topic == "schemas":
+        from .contracts import describe_contract
+        return result({"topic": topic, "guidance": describe_contract(tool),
+                       "presentation": localization.presentation(store(),locale),
+                       "note": "Versioned server output contracts; schema validity does not prove campus freshness or artifact delivery."}, "full")
     return result(study_guidance.help_for(store(),topic,locale))
 
 
@@ -430,12 +440,14 @@ async def study_more(mode: Literal["list","describe","call"] = "list", query: st
     entry=allowed[tool]
     if mode=="describe":
         from .protocol import portable_schema
+        from .contracts import output_schema, CONTRACT_VERSION
         return result({"tool":tool,"description":entry.description,
                        "inputSchema":portable_schema(entry.parameters),
+                       "outputSchema":output_schema(tool), "contract_version":CONTRACT_VERSION,
                        "annotations":entry.annotations.model_dump(exclude_none=True) if entry.annotations else {},
                        "next_step":"Call study_more(mode='call', tool=tool, arguments={...}) with these parameters."},"full")
-    # The original function validates arguments and returns the same result as the full catalog.
-    return await entry.run(arguments or {}, context=mcp.get_context(), convert_result=False)
+    # Use the same input/output validation boundary as a direct MCP call.
+    return await mcp.call_tool(tool, arguments or {})
 
 
 TOOL_PROFILE=os.environ.get("UOE_TOOL_PROFILE","full")

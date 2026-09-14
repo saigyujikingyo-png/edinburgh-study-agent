@@ -220,7 +220,9 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
     except Exception:
         record.update(state="failed",progress="Could not start the local school worker.")
         write_json(path, record)
-        raise RuntimeError("Could not start the local school worker.") from None
+        # A failed launch is still a persisted job. Return its receipt so the
+        # caller can inspect it without repeating the attempted operation.
+        return read_job(store, job_id)
     value=read_job(store, job_id)
     if action=="myed" or (action=="service" and arguments.get("service_id") in {"myed","euclid"}):
         from .results import workflow_hint

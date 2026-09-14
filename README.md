@@ -4,11 +4,11 @@
 
 Manage University of Edinburgh courses, materials and personal study workflows through your preferred AI agent. Independent open-source student project; not a University product.
 
-**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.0)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [Scope and measurements](docs/INSTALL_PERFORMANCE.md)
+**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.1)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [Scope and measurements](docs/INSTALL_PERFORMANCE.md)
 
 ## Install and start
 
-1. Download `UoE-Companion-0.7.0-Windows-x64.zip` and extract the entire ZIP.
+1. Download `UoE-Companion-0.7.1-Windows-x64.zip` and extract the entire ZIP.
 2. Double-click **Install.cmd**. In the local setup page, select WorkBuddy or Claude Desktop and choose **Install / update**. Python and plugin dependencies are included; no Git, terminal commands or development checkout are required for this route.
 3. Reload the selected agent's MCP connection. Sign in to the University in the dedicated window when needed; password and MFA stay on the school page.
 4. Ask, for example, "Show my classes this semester" or "Find this course's lecture notes and read the first file".
@@ -40,11 +40,13 @@ Files are saved on the campus computer and can be read through MCP. A local file
 
 ## Efficiency and acceptance
 
-Version **0.7.0** introduces a 13-tool daily menu, with advanced operations discovered on demand through `study_more`. Existing 33-tool student and 36-tool full profiles remain compatible. Common workflows return concise results; PDF summaries explicitly mark truncated cells and retain a full-detail route. Identical cached requests reuse their job receipts.
+Version **0.7.1** adds versioned output contracts and server validation to every public tool, including all 21 advanced operations. The 13-tool daily menu discovers advanced schemas on demand; the 33-tool student and 36-tool full profiles retain their existing operations. Common workflows return concise results; PDF summaries explicitly mark truncated cells and retain a full-detail route. Identical cached requests reuse their job receipts.
 
-Installation, tool/protocol checks, real campus reads and real agent/model conversations are separate evidence. This is a **student preview**, with installation and performance results in [INSTALL_PERFORMANCE.md](docs/INSTALL_PERFORMANCE.md). Earlier real Chat/Work and WorkBuddy evidence remains in [WORK_ACCEPTANCE.md](docs/WORK_ACCEPTANCE.md) and [WORKBUDDY_RESULTS.md](docs/WORKBUDDY_RESULTS.md). Those historical checks do not certify every 0.7.0 workflow or another person's account.
+Installation, tool/protocol checks, real campus reads and real agent/model conversations are separate evidence. This is a **student preview**, with installation and performance results in [INSTALL_PERFORMANCE.md](docs/INSTALL_PERFORMANCE.md). Earlier real Chat/Work and WorkBuddy evidence remains in [WORK_ACCEPTANCE.md](docs/WORK_ACCEPTANCE.md) and [WORKBUDDY_RESULTS.md](docs/WORKBUDDY_RESULTS.md). Those historical checks do not certify every current workflow or another person's account. See [0.7.1 contract coverage](docs/OUTPUT_CONTRACTS.md) and [reproducible protocol measurements](docs/CONTRACT_PERFORMANCE.md).
 
 ## Develop and build
+
+Shared rule **2026-09-14.1** is adopted. All 37 public tool identities across profiles declare output schemas, with the same server validation for direct and dispatched calls. Errors return bounded recovery and known saved identifiers; output-format failures never repeat a write. See the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md).
 
 The source archive remains available for developers and non-Windows hosts. Windows is the live campus acceptance platform; macOS/Linux live campus operation is unverified.
 
