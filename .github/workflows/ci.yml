@@ -45,14 +45,16 @@ jobs:
         if: runner.os == 'Windows' && matrix.python == '3.13'
         run: |
           python -m pip wheel --no-deps --wheel-dir dist .
-          python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.7.1-py3-none-any.whl
+          $uoeVersion = (Get-Content -Raw .codex-plugin/plugin.json | ConvertFrom-Json).version
+          python scripts/build_windows.py --wheel "dist/edinburgh_study_agent-$uoeVersion-py3-none-any.whl"
       - name: Verify bundled install without system Python
         if: runner.os == 'Windows' && matrix.python == '3.13'
         shell: pwsh
         run: |
           $uoePackage = Join-Path $env:RUNNER_TEMP 'UoE package'
           $uoePrivate = Join-Path $env:RUNNER_TEMP 'UoE student data'
-          Expand-Archive -LiteralPath dist/UoE-Companion-0.7.1-Windows-x64.zip -DestinationPath $uoePackage
+          $uoeVersion = (Get-Content -Raw .codex-plugin/plugin.json | ConvertFrom-Json).version
+          Expand-Archive -LiteralPath "dist/UoE-Companion-$uoeVersion-Windows-x64.zip" -DestinationPath $uoePackage
           $uoePayload = Join-Path $uoePackage 'UoE-Companion/payload'
           & (Join-Path $uoePayload 'runtime/Scripts/python.exe') -m edinburgh_study_agent.setup_core install --bundle $uoePayload --home $uoePrivate
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

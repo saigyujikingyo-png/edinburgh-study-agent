@@ -4,11 +4,11 @@
 
 Manage University of Edinburgh courses, materials and personal study workflows through your preferred AI agent. Independent open-source student project; not a University product.
 
-**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.1)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [Scope and measurements](docs/INSTALL_PERFORMANCE.md)
+**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.2)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [Scope and measurements](docs/INSTALL_PERFORMANCE.md)
 
 ## Install and start
 
-1. Download `UoE-Companion-0.7.1-Windows-x64.zip` and extract the entire ZIP.
+1. Download `UoE-Companion-0.7.2-Windows-x64.zip` and extract the entire ZIP.
 2. Double-click **Install.cmd**. In the local setup page, select WorkBuddy or Claude Desktop and choose **Install / update**. Python and plugin dependencies are included; no Git, terminal commands or development checkout are required for this route.
 3. Reload the selected agent's MCP connection. Sign in to the University in the dedicated window when needed; password and MFA stay on the school page.
 4. Ask, for example, "Show my classes this semester" or "Find this course's lecture notes and read the first file".
@@ -26,6 +26,7 @@ Google Chrome or Microsoft Edge must be installed. The wizard reuses existing pr
 | Courses and results | Learn membership/content discovery and own EUCLID course marks across loaded academic years; not an official transcript |
 | Personal timetable | Published personal Timetabler activities, year/semester/week/date filters and exact occurrence dates; incomplete exam/allocation coverage remains explicit |
 | Course timetable PDF | Verified download, labelled week/day extraction and cached summaries; request a particular week for full cells. Course grids do not prove personal group allocations or calendar dates |
+| Original file delivery | Export selected cached originals as file attachments or a ZIP with a manifest; validate size/SHA-256 before delivery. A destination upload is complete only after its own receipt and readback |
 | Course materials | Name/id resolution, bounded folder search, verified downloads and PDF/Office/text reading; ambiguous results return choices |
 | Learn updates | Loaded activity rows and course unread counters; full conversation bodies and exhaustive history are not implemented |
 | Events and academic dates | Standard academic dates and Physics & Astronomy public events, plus bounded directory reads; not all University events or vacancies |
@@ -36,17 +37,17 @@ University email is handled by **Outlook** and is outside this plugin's developm
 
 Normal campus reading/downloading uses the plugin's own session, structured DOM and HTTP. It does not require screenshots, coordinate clicks, host-side parser scripts or per-file Save As dialogs. Campus policy can require a later sign-in or MFA.
 
-Files are saved on the campus computer and can be read through MCP. A local file path is not automatically a cloud attachment. Each person installs independently and uses their own account; never share your private runtime/data directory or connection credentials.
+Downloads stay on the campus computer. `study_export_files` transfers their verified original bytes through MCP so a capable host can create usable attachments; a local path or resource URI alone is not a cloud file reference. See [file delivery and cloud workflows](docs/FILE_DELIVERY.md). Each person installs independently and uses their own account; never share your private runtime/data directory or connection credentials.
 
 ## Efficiency and acceptance
 
-Version **0.7.1** adds versioned output contracts and server validation to every public tool, including all 21 advanced operations. The 13-tool daily menu discovers advanced schemas on demand; the 33-tool student and 36-tool full profiles retain their existing operations. Common workflows return concise results; PDF summaries explicitly mark truncated cells and retain a full-detail route. Identical cached requests reuse their job receipts.
+Version **0.7.2** adds batch original-file delivery without a second upload service, public download links, or host-side parser scripts. Choose metadata only, individual files, or a ZIP containing an integrity manifest. It also fixes connection startup waiting and removal of obsolete workers during upgrades. The daily menu has 14 tools; student/full profiles have 34/37. Advanced schemas remain available on demand, and every tool retains the validated versioned output contracts introduced in 0.7.1.
 
 Installation, tool/protocol checks, real campus reads and real agent/model conversations are separate evidence. This is a **student preview**, with installation and performance results in [INSTALL_PERFORMANCE.md](docs/INSTALL_PERFORMANCE.md). Earlier real Chat/Work and WorkBuddy evidence remains in [WORK_ACCEPTANCE.md](docs/WORK_ACCEPTANCE.md) and [WORKBUDDY_RESULTS.md](docs/WORKBUDDY_RESULTS.md). Those historical checks do not certify every current workflow or another person's account. See [0.7.1 contract coverage](docs/OUTPUT_CONTRACTS.md) and [reproducible protocol measurements](docs/CONTRACT_PERFORMANCE.md).
 
 ## Develop and build
 
-Shared rule **2026-09-14.1** is adopted. All 37 public tool identities across profiles declare output schemas, with the same server validation for direct and dispatched calls. Errors return bounded recovery and known saved identifiers; output-format failures never repeat a write. See the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md).
+Shared rule **2026-09-14.1** is adopted. All 38 public tool identities across profiles declare output schemas, with the same server validation for direct and dispatched calls. Errors return bounded recovery and known saved identifiers; output-format failures never repeat a write. See the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md).
 
 The source archive remains available for developers and non-Windows hosts. Windows is the live campus acceptance platform; macOS/Linux live campus operation is unverified.
 

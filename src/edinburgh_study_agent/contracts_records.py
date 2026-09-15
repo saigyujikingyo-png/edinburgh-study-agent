@@ -141,7 +141,36 @@ HELP = variants(*(response({"topic": enum(topic), "guidance": guidance, "note": 
                                           ("languages", LANGUAGE_GUIDANCE), ("capabilities", CAPABILITIES),
                                           ("schemas", JSON_OBJECT))))
 
+EXPORT_PAYLOAD = obj({"filename": STR, "mime_type": STR, "size_bytes": COUNT,
+                      "sha256": SHA256, "resource_uri": STR},
+                     ("filename", "mime_type", "size_bytes", "sha256", "resource_uri"))
+EXPORT_FILE = obj({**EXPORT_PAYLOAD["properties"], "item_id": IDENTIFIER,
+                   "source_page_url": STR, "downloaded_at": TIMESTAMP},
+                  (*EXPORT_PAYLOAD["required"], "item_id", "source_page_url", "downloaded_at"))
+EXPORT = response({"format_version": enum("1"), "export_id": SHA256,
+                   "mode": enum("manifest", "files", "bundle"),
+                   "state": enum("verified_local", "awaiting_host_receipt"),
+                   "created_at": TIMESTAMP, "files": arr(EXPORT_FILE, 30),
+                   "total_bytes": COUNT, "payloads": arr(EXPORT_PAYLOAD, 30),
+                   "host_registration": enum("not_requested", "required"), "next_step": STR},
+                  ("format_version", "export_id", "mode", "state", "created_at", "files",
+                   "total_bytes", "payloads", "host_registration", "next_step"))
+
+# Metadata-only, original-file and ZIP delivery have different completion states.
+EXPORT["properties"]["files"]["minItems"] = 1
+EXPORT["properties"]["total_bytes"] = {"type": "integer", "minimum": 1, "maximum": 33554432}
+EXPORT["allOf"] = [{"anyOf": [
+    {"properties": {"mode": enum("manifest"), "state": enum("verified_local"),
+                    "host_registration": enum("not_requested"), "payloads": {"maxItems": 0}}},
+    {"properties": {"mode": enum("files"), "state": enum("awaiting_host_receipt"),
+                    "host_registration": enum("required"), "payloads": {"minItems": 1}}},
+    {"properties": {"mode": enum("bundle"), "state": enum("awaiting_host_receipt"),
+                    "host_registration": enum("required"), "payloads": {"minItems": 1, "maxItems": 1}}},
+]}]
+
+
 OUTPUTS = {
+    "study_export_files": EXPORT,
     "study_status": response({
         "version": STR, "name": enum("UoE Companion"), "transport": enum("stdio"),
         "browser": enum("plugin_owned_persistent_campus_session"), "data_directory": STR,
@@ -150,7 +179,7 @@ OUTPUTS = {
         "live_connection_checked": enum(False), "capabilities": arr(STR), "unsupported": arr(STR),
         "privacy": STR, "audience": enum("students"), "tool_profile": enum("daily", "student", "full"),
         "basic_workflows": obj({
-            "schedules": STR, "course_files": STR, "learn_updates_and_unread": STR,
+            "schedules": STR, "course_files": STR, "export_original_files": STR, "learn_updates_and_unread": STR,
             "public_dates_events": STR, "older_chat_work_catalog": STR, "advanced_operations": STR,
         }, ("schedules", "course_files", "learn_updates_and_unread", "public_dates_events")),
         "preferences": PREFERENCES, "feature_status": CAPABILITIES,

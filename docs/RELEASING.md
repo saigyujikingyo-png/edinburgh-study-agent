@@ -1,10 +1,10 @@
 # Releasing
 
-## 0.7.1 student prerelease
+## 0.7.2 student prerelease
 
-This compatible update implements output contract version 1 for all 37 public tool identities and 21 advanced operations. Direct and dispatched results share validation. Success keeps existing fields with additive `_contract` metadata; structured errors preserve known saved identifiers and never automatically repeat writes. See the [coverage ledger](OUTPUT_CONTRACTS.md) for tested branches and remaining host/campus gates.
+This compatible update adds verified batch original-file delivery using standard MCP resources and fixes obsolete connection processes during upgrades. All 38 public tool identities and 21 advanced operations retain version 1 output contracts. See [0.7.2 acceptance](FILE_DELIVERY_ACCEPTANCE.md), [file delivery](FILE_DELIVERY.md) and the [contract ledger](OUTPUT_CONTRACTS.md) for tested branches and remaining host/campus gates.
 
-The shared rule version (2026-09-14.1), output contract version (1) and product version (0.7.1) are separate. Publish as a prerelease while additional-user and full host/model acceptance remain open.
+The shared rule version (2026-09-14.1), output contract version (1) and product version (0.7.2) are separate. Publish as a prerelease while additional-user and full host/model acceptance remain open.
 
 ## Release procedure
 
@@ -22,15 +22,15 @@ The publication check is a targeted safeguard. Human review is still required fo
 
 ## Windows student installer
 
-Version 0.7.1 additionally ships `UoE-Companion-0.7.1-Windows-x64.zip` and its checksum. Build on Windows from the reviewed checkout:
+Version 0.7.2 additionally ships `UoE-Companion-0.7.2-Windows-x64.zip` and its checksum. Build on Windows from the reviewed checkout:
 
 ```text
 python -m pip wheel --no-deps --wheel-dir dist .
-python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.7.1-py3-none-any.whl
+python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.7.2-py3-none-any.whl
 ```
 
 The builder verifies the current wheel against source, downloads the pinned official CPython embeddable archive, verifies its published SHA-256, resolves dependency wheels against `requirements.lock`, and installs them into a fresh build directory. It retains licences and a public binary provenance inventory. It removes generated console launchers/build-path provenance because the product uses module entrypoints. No personal runtime is a build input.
 
 Validate actual installation and repeat installation in isolated directories (including spaces/non-ASCII paths), configuration preservation, failure rollback, the local wizard and the bundled stdio runtime. The Windows/Python 3.13 CI job builds and executes this installer in addition to the normal regression suite. Review both source and runtime archive inventories before upload; publish only artifacts built from the passing commit.
 
-Label 0.7.1 as a student **prerelease** until additional-user installation and the outstanding real host/model workflows are accepted. Include the installation guide, current compatibility limits, measured scope and checksums. Do not promote protocol timing or synthetic tests to model/token-billing evidence.
+Label 0.7.2 as a student **prerelease** until additional-user installation and the outstanding real host/model workflows are accepted. Include the installation guide, current compatibility limits, measured scope and checksums. Do not promote protocol timing or synthetic tests to model/token-billing evidence.

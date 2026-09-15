@@ -20,7 +20,7 @@ async def run():
                 assert initialized.serverInfo.name=="UoE Companion"
                 assert initialized.serverInfo.icons[0].mimeType=="image/png"
                 tools = await session.list_tools()
-                assert len(tools.tools) == 36
+                assert len(tools.tools) == 37
                 schemas = {tool.name: tool.outputSchema for tool in tools.tools}
                 for schema in schemas.values():
                     assert schema and schema.get("type") == "object"

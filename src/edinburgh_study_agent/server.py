@@ -8,6 +8,7 @@ from pydantic import Field
 from .protocol import PortableFastMCP
 from mcp.types import CallToolResult, TextContent, ToolAnnotations, Icon
 from .downloads import download_resource, list_downloads
+from . import delivery
 from .models import Kind, Observation, Source
 from .planner import build_plan
 from .routes import ROUTES
@@ -27,7 +28,7 @@ mcp = PortableFastMCP("UoE Companion",
     "A returned terminal state already contains results; poll only queued/running jobs. "
     "For schedules use study_timetable directly (including semester or a PDF item_id); materials use study_materials, Learn updates/unread counters use study_messages, public dates/events use study_events. These return ready-to-use data with internal caching. Do not inspect host files, install PDF tools, write parsers or build a website for basic queries. "
     "For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
-    "Never use screenshots or coordinate clicks. Download files with study_download_files without Save As. For EUCLID, events, internships and other resources use study_services and study_read_service; organise them with study_collect and local tasks. Read verified documents using study_read_file. "
+    "Never use screenshots or coordinate clicks. Download files with study_download_files without Save As. For EUCLID, events, internships and other resources use study_services and study_read_service; organise them with study_collect and local tasks. Read verified documents using study_read_file. For originals needed by ChatGPT or Drive, use study_export_files with selected downloaded item_ids; only claim destination upload after an actual host receipt and destination readback. "
     "These tools automate supported school DOM pages, store dated evidence and tasks, and download verified files; no registered university REST integration. "
     "Compact responses are default; use next_offset to page and detail=full only when needed. study_school_job waits up to 20 seconds; do not rapid-poll. "
     "Read saved files locally with study_read_file or study_read_resource(refresh=False); use refresh=True when current remote contents are required. "
@@ -63,7 +64,7 @@ def study_status(include_capabilities: bool = False) -> CallToolResult:
     value=store().status()
     value["audience"]="students"
     value["tool_profile"]=TOOL_PROFILE
-    value["basic_workflows"]={"schedules":"study_timetable","course_files":"study_materials",
+    value["basic_workflows"]={"schedules":"study_timetable","course_files":"study_materials", "export_original_files":"study_export_files",
         "learn_updates_and_unread":"study_messages","public_dates_events":"study_events",
         "older_chat_work_catalog":"study_read_service: timetable + query='semester 1'; events for public dates; learn + query='activity' or 'inboxes'. Timetable item_id reads a course PDF."}
     value["preferences"]=localization.preferences(store())["preferences"]
@@ -167,6 +168,20 @@ def study_download_resource(item_id: str, download_url: str, filename: str,
                             refresh: bool = False, max_megabytes: int = 100) -> CallToolResult:
     """Save an observed Learn resource directly without browser Save As. Obtain its current original-file URL from visible link/iframe DOM. Signed URLs are transient and never saved in metadata. Returns a verified local file, checksum and source page. Verified local copies are reused unless refresh=True; reuse does not check remote freshness."""
     return result(download_resource(store(), item_id, download_url, filename, refresh, max_megabytes))
+
+@mcp.resource("ui://uoe/file-receiver-0.7.2.html", name="UoE attachment compatibility", mime_type="text/html;profile=mcp-app")
+def study_file_receiver_compatibility() -> str:
+    # Existing development connections can retain a template URI until refreshed.
+    # Keep that URI readable, but never upload or register attachments twice.
+    return '<!doctype html><meta charset="utf-8"><p>UoE Companion: use the original file attachments returned by this host. 请使用宿主返回的原文件附件。</p>'
+
+
+@mcp.tool(annotations=READ)
+def study_export_files(item_ids: list[str], mode: Literal["manifest", "files", "bundle"] = "files",
+                       max_megabytes: int = 16) -> CallToolResult:
+    """Export 1..30 already downloaded originals for attachments or cloud storage, without browser clicks. files returns verified original MCP blobs; bundle returns a ZIP with manifest; manifest returns metadata only. Max 32 MiB total. Use host-created attachment references after native materialization; other hosts save the blobs through their file API and check SHA256. A returned resource is not proof of ChatGPT/Drive upload. Never paste base64, invent file IDs or send a campus-computer path to a remote connector. No campus refresh, reclassification, deletion or external upload by this server."""
+    return delivery.export_files(store(), item_ids, mode, max_megabytes)
+
 
 @mcp.tool(annotations=READ, structured_output=False)
 def study_downloads(item_id: str | None = None) -> CallToolResult:

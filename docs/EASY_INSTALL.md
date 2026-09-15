@@ -1,8 +1,8 @@
-# Easy installation — 0.7.1 student preview
+# Easy installation — 0.7.2 student preview
 
 ## Windows x64
 
-Download the Windows setup ZIP from the [0.7.1 release](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.1), extract the whole archive, and double-click **Install.cmd**. Keep the `payload` folder beside it.
+Download the Windows setup ZIP from the [0.7.2 release](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.2), extract the whole archive, and double-click **Install.cmd**. Keep the `payload` folder beside it.
 
 The setup page runs temporarily on this computer's loopback interface. Its private URL is random, external origins are rejected, and no page assets or installation data are sent to a hosted setup service. Select English or Chinese, choose a local agent, and click **Install / update**. Select **Finish** to stop the helper; an abandoned idle helper also expires.
 
@@ -43,4 +43,4 @@ Remove the UoE connection from the chosen host's normal MCP/plugin settings. For
 - New ChatGPT account/tunnel registration and some other host-specific imports are still personal setup steps.
 - University session expiry/MFA and provider changes can require user action.
 - Cloud Work depends on this computer being online. Downloads are local; host attachment delivery is separate.
-- A second student's own account and real 0.7.1 model conversations across all hosts have not been certified.
+- A second student's own account and real 0.7.2 model conversations across all hosts have not been certified.

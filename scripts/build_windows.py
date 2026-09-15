@@ -38,6 +38,10 @@ def build(root, wheel, output):
         raise ValueError("Supply the current version's freshly built wheel.")
     # Confirm the wheel contains the exact current application modules.
     with zipfile.ZipFile(wheel) as archive:
+        expected = {"edinburgh_study_agent/" + path.name for path in (root / "src/edinburgh_study_agent").glob("*.py")}
+        actual = {name for name in archive.namelist() if name.startswith("edinburgh_study_agent/") and not name.endswith("/")}
+        if actual != expected:
+            raise ValueError("Wheel package inventory differs from current reviewed source; rebuild from a clean build directory.")
         for path in (root / "src/edinburgh_study_agent").glob("*.py"):
             if archive.read("edinburgh_study_agent/" + path.name) != path.read_bytes():
                 raise ValueError("Wheel and current source differ: " + path.name)

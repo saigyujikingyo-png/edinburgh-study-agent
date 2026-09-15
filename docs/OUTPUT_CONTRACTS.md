@@ -1,8 +1,8 @@
 # Output contracts and acceptance coverage
 
-Shared rule: **2026-09-14.1**, section 12. Product implementation: **0.7.1 student preview**. Public output contract: **version 1**. These are separate version numbers. Implementation in the checkout does not establish that a release package or an account installation has been accepted.
+Shared rule: **2026-09-14.1**, section 12. Product implementation: **0.7.2 student preview**. Public output contract: **version 1**. These are separate version numbers. Implementation in the checkout does not establish that a release package or an account installation has been accepted.
 
-The shared registry now declares output schemas for all **37 public tool names**: **36** in the full catalog, **33** in the student catalog and **13** in the daily catalog. The daily entrypoint exposes **21 advanced operations** through on-demand discovery. All advertised tools have `outputSchema`; each advanced operation has the same complete output contract as its direct tool.
+The shared registry now declares output schemas for all **38 public tool names**: **37** in the full catalog, **34** in the student catalog and **14** in the daily catalog. The daily entrypoint exposes **21 advanced operations** through on-demand discovery. All advertised tools have `outputSchema`; each advanced operation has the same complete output contract as its direct tool.
 
 ## Implemented boundary
 
@@ -50,6 +50,7 @@ Availability: F = full; S = student; D = direct daily tool; A = daily advanced o
 | `study_downloads` | F / S / A | C, D | Saved metadata checked against synthetic bytes/hash; host receipt is unverified by this check. |
 | `study_events` | F / S / D | C, D | Date/null semantics and independent source failures; supported public sources do not mean all University events. |
 | `study_evidence` | F / S / A | C, B | Observation, optional item detail, bounded text and continuation; no private-source read in contract tests. |
+| `study_export_files` | F / S / D | C, D, F | Originals/ZIP as MCP binary resources, metadata-only mode, size/SHA-256, bounded batch and state-specific contracts. All three profiles and modes tested; see [delivery acceptance](FILE_DELIVERY.md). |
 | `study_export_calendar` | F / S / A | C, B | ICS identity/path, counts, export coverage and available media metadata; receiving/opening it is a separate gate. |
 | `study_help` | F / S / D | C, D | Topic, locale, guidance and on-demand schema discovery; host interpretation is not guaranteed. |
 | `study_home` | F / S / A | C, B | Cached counts, service checks, collections and local tasks; counts are not a live connection claim. |
@@ -89,6 +90,7 @@ Every operation below is implemented using its direct v1 contract, with cached s
 | `study_download_files` | Checked | Dedicated call not claimed |
 | `study_downloads` | Checked | Dedicated call not claimed |
 | `study_evidence` | Checked | Dedicated call not claimed |
+| `study_export_files` | F / S / D | C, D, F | Originals/ZIP as MCP binary resources, metadata-only mode, size/SHA-256, bounded batch and state-specific contracts. All three profiles and modes tested; see [delivery acceptance](FILE_DELIVERY.md). |
 | `study_export_calendar` | Checked | Dedicated call not claimed |
 | `study_home` | Checked | Dedicated call not claimed |
 | `study_import_calendar` | Checked | Dedicated call not claimed |
@@ -133,7 +135,7 @@ Catalog bytes mean UTF-8 bytes of `ListToolsResult.model_dump_json(by_alias=True
 
 | Gate | Development state | Release evidence required |
 | --- | --- | --- |
-| Shared rule and coverage inventory | Adopted; 37 tools / 21 advanced operations registered | This ledger and matching shared principles |
+| Shared rule and coverage inventory | Adopted; 38 tools / 21 advanced operations registered | This ledger and matching shared principles |
 | Declared contracts and server validation | Implemented | Final checkout contract/regression pass and exact CI run |
 | Error/lifecycle/null/artifact branches | Focused synthetic coverage; not exhaustive live coverage | Current boundary tests, malformed-result checks and applicable artifact checks |
 | Direct/dispatcher/profile/text compatibility | Synthetic public calls and real stdio checked | Final packaged stdio/profile validation; host dialect acceptance recorded separately |
