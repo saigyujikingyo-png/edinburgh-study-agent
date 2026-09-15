@@ -21,7 +21,7 @@ Complete campus sign-in and MFA in the dedicated local window when a live job re
 - School resources: `study_services`, `study_read_service`, `study_search`.
 - Organisation: `study_home`, collections, tasks, agenda and study-plan tools.
 
-The full catalog has 36 operations; the student profile has 33. Version 0.7.0 also provides a 13-tool daily menu with advanced discovery. Keep the existing ChatGPT connection and its catalog unless explicitly changing profiles. Server instructions and `study_help` supply workflows to hosts without the optional Codex skill.
+Version 0.7.2 has 37 full-profile tools, 34 student-profile tools and a 14-tool daily menu with advanced discovery. Keep the existing ChatGPT connection and its catalog unless explicitly changing profiles. Server instructions and `study_help` supply workflows to hosts without the optional Codex skill.
 
 ## Deploy on another machine
 
@@ -69,7 +69,7 @@ This writes `.app.json` and its manifest reference only into the separate privat
 
 ## Scope and files
 
-Files remain on the campus computer. All three modes can request bounded text from verified supported files; local paths are not cloud attachments. Source times, unavailable courses, external/LTI pages and incomplete coverage remain explicit. MyEd, Learn, EUCLID, MyCareerHub and Timetabler have reused the same campus login; that does not establish access to every provider.
+Downloads remain on the campus computer. All three modes can request bounded text from verified supported files. Version 0.7.2 can also transfer verified original bytes through `study_export_files`; receiving-host materialisation and destination upload require separate acceptance. See [original-file delivery](FILE_DELIVERY.md). Source times, unavailable courses, external/LTI pages and incomplete coverage remain explicit. MyEd, Learn, EUCLID, MyCareerHub and Timetabler have reused the same campus login; that does not establish access to every provider.
 
 The plugin reads supported pages and manages local records. It does not submit coursework, apply for internships, book events or alter enrolment. Private connection and acceptance details stay outside the release.
 
@@ -80,3 +80,17 @@ The plugin reads supported pages and manages local records. It does not submit c
 - [MCP in ChatGPT](https://learn.chatgpt.com/docs/extend/mcp)
 - [Connect and test plugins](https://developers.openai.com/plugins/deploy/connect-chatgpt)
 - [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels)
+
+## Conversation and file-reference compatibility
+
+If an existing Chat reports `FORBIDDEN: This conversation does not support developer MCPs`,
+tool discovery and the campus connection can still be healthy. That conversation cannot
+execute the developer tool. Use a host-supported conversation; do not reset school login
+or duplicate the registered plugin to address the error. New task creation follows the
+user's host workflow and permission rules.
+
+For storage transfers, never send a `BlobResourceContents` object to a destination field
+that declares a path string. Materialise the original bytes in the receiving environment,
+verify them, then use that environment's declared file upload adapter. Do not invent
+connector reference fields. The release acceptance record distinguishes failed inputs,
+corrected host paths and actual destination readback.

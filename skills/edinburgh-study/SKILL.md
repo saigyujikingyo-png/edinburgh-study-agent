@@ -89,3 +89,19 @@ Share the public source/install package, never a personal campus profile or priv
 The visible plugin name/icon alone is not proof of a callable cloud connection. A personal local marketplace package uses local stdio; Chat and cloud Work need the user's registered app installed **and connected** in ChatGPT. Search the actual available tools before declaring them absent. If the host reports authentication accepted and asks to retry, retry the affected read once. Do not request a new campus login for a missing-tool or host-connection error. After reconnecting, verify actual `study_status` and bounded `study_search` results; local runtime status is insufficient. Installation details: `docs/WORK_SETUP.md`. Each person must bind their own app; never use another person's private connection.
 
 For original files needed by Chat or another connector, use `study_export_files` with selected cached resource item IDs. `files` returns original MCP attachments; `bundle` returns a ZIP with an integrity manifest; `manifest` returns metadata only. Use only host-created file references after receipt. Never pass a campus-computer path or `uoe://` URI to a cloud uploader, paste base64 into a message, or regenerate the original from extracted text. Check destination duplicates and verify uploaded bytes before marking migration complete.
+
+### Transferring originals between agents and storage
+
+Use `study_export_files` once per selected cached batch. Prefer native attachments.
+If the host gives raw MCP resources instead, retain the tool result within programmatic
+orchestration and save the original `resource.blob` bytes in that receiving host's
+workspace. Stream via stdin or a binary writer; large shell arguments can exceed OS
+limits. Verify size/SHA-256 before upload. Do not display or sample base64, reconstruct
+course content, reinstall document libraries, or repeatedly export lost results.
+
+Follow the destination tool's actual file parameter schema. A host adapter that
+explicitly takes an absolute local path string needs the verified file in its own
+workspace; passing the entire `BlobResourceContents` object is invalid. Other
+connectors need their own real file reference. A campus-machine path is still
+unreadable to a cloud host. Check destination duplicates and verify readback before
+marking migration complete. Report a rejected correct input as a host delivery gap.
