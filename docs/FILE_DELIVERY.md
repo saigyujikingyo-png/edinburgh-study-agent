@@ -121,18 +121,35 @@ On 15 September 2026, the native export candidate produced new ChatGPT Chat
 file references for a 153,413-byte PDF and a 12,533-byte XLSX. The host reported
 both runtime files readable; its document browser did not support the XLSX.
 The refreshed tool catalog has no widget output template. A trial uploader was
-removed because the host already materialised binary resources. This proves
-Chat file receipt, not destination upload or every other host.
+removed because the host already materialised binary resources. This establishes Chat file receipt. The separate cloud Work acceptance below also verified the destination upload; neither result certifies every other host.
 
 | Surface | Current evidence boundary |
 | --- | --- |
 | Portable MCP core | Synthetic public-tool and integrity tests; no campus account required. |
-| ChatGPT Chat | Native PDF/XLSX file references and original sizes observed; destination acceptance is separate. This Chat session did not expose Google Drive tools. |
-| ChatGPT local Work / cloud Work | Verify the final file route separately; earlier status or course-query acceptance does not establish file delivery. |
+| ChatGPT Chat | Native PDF/XLSX receipt in one account; final installed-version status passed. A separate legacy project conversation rejected developer MCP execution. |
+| ChatGPT cloud Work | Two original files reached Google Drive through a verified receiving-workspace path and the host upload adapter; independent Drive readback matched both hashes. |
+| ChatGPT local Work | This release did not repeat file-transfer model acceptance. Earlier status/course checks are separate. |
 | Codex / Claude / WorkBuddy / other suitable agents | Shared MCP binary contract; each host's materialisation and destination transfer require their own acceptance. |
-| Google Drive or another cloud destination | Upload and destination readback remain separate gates. Consult the final release verification record. |
+| Google Drive | The two explicitly authorised acceptance copies passed destination filename, folder, size and raw-byte SHA-256 checks. Other cloud destinations remain unverified. |
 
 No private account identifiers, resource IDs, signed URLs, original course files
 or local acceptance paths belong in public tests or documentation. See
 [output contracts](OUTPUT_CONTRACTS.md) and the repository's [verification
 record](../VERIFICATION.md) for the applicable release evidence.
+
+### Avoid the object-versus-path mismatch
+
+A raw MCP `BlobResourceContents` object is not a connector upload reference.
+In the tested cloud Work adapter, `google_drive_upload_file.file_uri` is declared
+as a string containing a file path in that Work environment. The host converts
+that path for its connector. Passing the whole MCP resource object was rejected.
+
+When native attachments are unavailable, keep the export result inside
+programmatic tool orchestration, stream its original bytes into the receiving
+workspace, and verify size/SHA-256. Use stdin or a binary writer rather than a
+large command-line argument. Supply the verified workspace path only when the
+host tool explicitly declares that adapter. This does not make an unrelated
+campus-machine path readable, and it does not justify inventing reference fields.
+
+See [0.7.2 acceptance](FILE_DELIVERY_ACCEPTANCE.md) for the successful route,
+failed first attempts and measured limits.

@@ -2,7 +2,7 @@
 
 ## 0.7.2 student prerelease
 
-This compatible update adds verified batch original-file delivery using standard MCP resources and fixes obsolete connection processes during upgrades. All 38 public tool identities and 21 advanced operations retain version 1 output contracts. See [file delivery](FILE_DELIVERY.md) and the [contract ledger](OUTPUT_CONTRACTS.md) for tested branches and remaining host/campus gates.
+This compatible update adds verified batch original-file delivery using standard MCP resources and fixes obsolete connection processes during upgrades. All 38 public tool identities and 21 advanced operations retain version 1 output contracts. See [0.7.2 acceptance](FILE_DELIVERY_ACCEPTANCE.md), [file delivery](FILE_DELIVERY.md) and the [contract ledger](OUTPUT_CONTRACTS.md) for tested branches and remaining host/campus gates.
 
 The shared rule version (2026-09-14.1), output contract version (1) and product version (0.7.2) are separate. Publish as a prerelease while additional-user and full host/model acceptance remain open.
 
