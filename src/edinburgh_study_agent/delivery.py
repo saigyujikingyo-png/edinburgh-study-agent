@@ -37,9 +37,11 @@ def _json(value):
 
 
 def _read_cached(store, item_id, remaining):
-    item = store.item(item_id)
-    if item['kind'] != 'resource' or item['source'] != 'learn':
-        raise ValueError('Export an observed Learn resource item_id.')
+    from .nmr import record as nmr_record
+    nmr = nmr_record(store, item_id)
+    item = {'kind': 'resource', 'source': 'nmr'} if nmr else store.item(item_id)
+    if item['kind'] != 'resource' or item['source'] not in ('learn', 'nmr'):
+        raise ValueError('Export an observed Learn resource or a verified NMR acquisition item_id.')
     root = store.root.resolve()
     cache = root / 'downloads'
     if cache.resolve() != cache:
@@ -61,14 +63,23 @@ def _read_cached(store, item_id, remaining):
         filename = safe_filename(record['filename'])
         if filename != record['filename']:
             continue
-        source = safe_url(record['source_page_url'])
-        if urlsplit(source).hostname not in ('learn.ed.ac.uk', 'www.learn.ed.ac.uk'):
-            raise ValueError('Export provenance must be an observed Learn page.')
+        if nmr:
+            from .nmr_client import NOMAD_ORIGIN, LEGACY_ORIGIN, LEGACY_PATH
+            expected = NOMAD_ORIGIN + '/' if nmr['provider'] == 'nomad' else LEGACY_ORIGIN + LEGACY_PATH
+            source = record['source_page_url']
+            if source != expected or source != nmr['source_page_url']:
+                raise ValueError('Export provenance must match the recorded NMR acquisition.')
+        else:
+            source = safe_url(record['source_page_url'])
+            if urlsplit(source).hostname not in ('learn.ed.ac.uk', 'www.learn.ed.ac.uk'):
+                raise ValueError('Export provenance must be an observed Learn page.')
         mime = MIME_TYPES.guess_type(filename)[0] or 'application/octet-stream'
         uri = f'uoe://files/{digest}/{quote(filename, safe="")}'
         return {'item_id': item_id, 'filename': filename, 'mime_type': mime,
                 'size_bytes': len(body), 'sha256': digest, 'resource_uri': uri,
                 'source_page_url': source, 'downloaded_at': record['downloaded_at']}, body
+    if nmr:
+        raise ValueError('No intact NMR original for this item_id. Use study_nmr download with the saved request and selection, then export again.')
     raise ValueError('No intact cached original for this item_id. Use study_download_files for the selected item, then export again.')
 
 

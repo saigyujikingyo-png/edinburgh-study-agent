@@ -124,7 +124,7 @@ def timetable_export():
 def test_all_profiles_advertise_valid_output_contracts_and_discover_advanced_operations(profiles):
     load, _ = profiles
     names = set()
-    for profile, count in (("full", 37), ("student", 34), ("daily", 14)):
+    for profile, count in (("full", 38), ("student", 35), ("daily", 15)):
         module = load(profile)
         catalog = asyncio.run(module.mcp.list_tools())
         assert len(catalog) == count
@@ -145,7 +145,7 @@ def test_all_profiles_advertise_valid_output_contracts_and_discover_advanced_ope
         # Detailed operation shapes are discovered on demand, not multiplied into the dispatcher.
         dispatcher = next(tool for tool in catalog if tool.name == "study_more")
         assert len(json.dumps(dispatcher.outputSchema)) < 8000
-    assert len(names) == 38
+    assert len(names) == 39
 
 
 def test_schema_help_is_on_demand_and_describes_a_real_operation(profiles):

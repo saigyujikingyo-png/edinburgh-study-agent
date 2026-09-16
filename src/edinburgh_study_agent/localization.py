@@ -27,6 +27,10 @@ TITLES = {
     "ko": "MyEd 포털|Learn 강좌와 학습 자료|EUCLID 학생 기록|수강 신청 과목|개인 시간표|학위 규정과 교육과정|도서관|읽기 목록|기출 시험 문제|Media Hopper 강의 녹화|진로와 취업|인턴십과 실무 경험|MyCareerHub 채용 정보|진로 행사|대학 행사|학생회 행사|학사 행정",
 }
 CATALOG = {locale: dict(zip(SERVICE_IDS, titles.split("|"), strict=True)) for locale, titles in TITLES.items()}
+NMR_TITLES = {"en-GB": "NMR raw data", "zh-Hans": "NMR 核磁原始数据", "zh-Hant": "NMR 核磁原始資料",
+              "fr-FR": "Données RMN brutes", "es-ES": "Datos RMN originales", "de-DE": "NMR-Rohdaten",
+              "ar": "بيانات الرنين المغناطيسي النووي الخام", "hi": "NMR मूल डेटा", "ja": "NMR 生データ", "ko": "NMR 원시 데이터"}
+for _locale, _title in NMR_TITLES.items(): CATALOG[_locale]["nmr"] = _title
 CATEGORY_KEYS = ("portal", "study", "record", "record", "study", "study", "resources", "resources",
                  "resources", "resources", "careers", "careers", "careers", "events", "events", "events", "support")
 CATEGORIES = {
@@ -104,6 +108,9 @@ def search_key(text):
 
 def service_labels(service_id, locale):
     code = catalog_locale(locale)
+    if service_id == "nmr":
+        return {"title": CATALOG[code][service_id], "official_name": CATALOG["en-GB"][service_id],
+                "category": CATEGORY_LABELS[code]["resources"], "category_id": "resources"}
     index = SERVICE_IDS.index(service_id)
     return {"title": CATALOG[code][service_id], "official_name": CATALOG["en-GB"][service_id],
             "category": CATEGORY_LABELS[code][CATEGORY_KEYS[index]], "category_id": CATEGORY_KEYS[index]}

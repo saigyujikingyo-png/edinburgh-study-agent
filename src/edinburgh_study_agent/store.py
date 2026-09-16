@@ -187,7 +187,7 @@ class Store:
                                  "bounded calendar import", "conflict-aware draft study plan", "calendar export", "direct verified file downloads", "central school service directory", "cross-service collections", "bounded PDF and Office text reading"],
                 "unsupported": ["scheduled automatic refresh", "direct Blackboard REST integration",
                                 "server-side assignment submission", "remote calendar writes"],
-                "privacy": "The dedicated browser manages its own local campus profile. Credentials and cookies are never exported to the agent. No inbound network listener."}
+                "privacy": "The dedicated browser manages its own local campus profile. NMR uses a separate temporary loopback credential panel. Credentials and cookies are never exported to the agent. No public inbound listener."}
 
     def create_task(self, title: str, estimate_minutes: int, item_id=None, due_at=None,
                     due_date=None, priority=3, notes="") -> dict:

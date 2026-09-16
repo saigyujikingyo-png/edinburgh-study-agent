@@ -60,9 +60,10 @@ def _bounded_json(value, depth=0, budget=None, *, max_depth=48):
 def _outputs():
     from .contracts_records import OUTPUTS as records
     from .contracts_school import OUTPUTS as school
-    if records.keys() & school.keys():
+    from .contracts_nmr import OUTPUTS as nmr
+    if records.keys() & school.keys() or (records.keys() | school.keys()) & nmr.keys():
         raise RuntimeError("Duplicate output contract definitions.")
-    return {**records, **school}
+    return {**records, **school, **nmr}
 
 
 def _metadata(operation=None):

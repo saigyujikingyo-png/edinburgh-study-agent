@@ -18,7 +18,7 @@ def test_daily_real_mcp_discovery_call_validation_and_no_legacy_bypass(tmp_path)
                 init = await session.initialize()
                 assert "study_more" in init.instructions
                 tools = (await session.list_tools()).tools
-                assert len(tools) == 14 and "study_materials" in {t.name for t in tools}
+                assert len(tools) == 15 and {"study_materials", "study_nmr"} <= {t.name for t in tools}
                 assert "study_task_create" not in {t.name for t in tools}
                 found = await session.call_tool("study_more", {"query": "task"})
                 assert not found.isError

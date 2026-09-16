@@ -6,6 +6,7 @@ import re
 from .models import safe_url
 
 SERVICES = [
+    dict(id="nmr", title="NMR raw data", category="学习资源", url="https://nmr-nomad.chem.ed.ac.uk/", access="campus", topics="NMR 核磁 原始数据 sample FID NOMAD archive spectroscopy", adapter="nmr"),
     dict(id="myed", title="MyEd 学校总入口", category="门户", url="https://www.myed.ed.ac.uk/", access="campus", topics="学校 资源 服务 portal"),
     dict(id="learn", title="Learn 课程与课件", category="课业", url="https://www.learn.ed.ac.uk/ultra/course", access="campus", topics="课程 作业 课件 下载 lectures assignments", adapter="learn"),
     dict(id="euclid", title="EUCLID / My Student Record 学籍", category="学籍", url="https://www.myed.ed.ac.uk/", access="campus", topics="成绩 学分 注册 在读证明 enrolment grades transcript", launch_label="My student record", recommended_section="Courses"),
@@ -75,9 +76,11 @@ def directory(store, query: str = "", locale: str | None = None) -> dict:
         current["supported_actions"] = ["read", "search cached text", "follow observed links", "collect", "local task"]
         if current.get("adapter") == "learn":
             current["supported_actions"] += ["course pagination", "expand course folders", "download original files"]
+        elif current.get("adapter") == "nmr":
+            current["supported_actions"] = ["study_nmr: resumable sample search", "protected NMR connection", "verified raw ZIP download", "study_export_files: original byte delivery"]
         current["last_check"] = checks.get(entry["id"])
         current["coverage"] = checks.get(entry["id"],{}).get("coverage","not_yet_verified")
         result.append(current)
     return {"services":result,"presentation":view,"live":False,"directory_is_not_connection_proof":True,
             "scope":"Configured entrypoints plus observed links; external providers, form submissions and private pages need individual verification.",
-            "next_tool":"study_read_service; Learn uses study_live_courses/study_live_resources"}
+            "next_tool":"NMR uses study_nmr; other services use study_read_service; Learn uses study_live_courses/study_live_resources"}

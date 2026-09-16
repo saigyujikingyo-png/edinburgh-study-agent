@@ -139,7 +139,7 @@ def test_host_conflict_invalid_json_and_generation_do_not_overwrite(tmp_path):
 def test_mcp_student_profile_tools_and_language_roundtrip(store):
     config=hosts.server_config(sys.executable,store.root)
     checked=hosts.doctor(config)
-    assert checked["tools"]==34 and checked["host_model_roundtrip"]=="not_tested"
+    assert checked["tools"]==35 and checked["host_model_roundtrip"]=="not_tested"
 
 
 def test_portable_catalog_retains_runtime_validation(store,monkeypatch):
