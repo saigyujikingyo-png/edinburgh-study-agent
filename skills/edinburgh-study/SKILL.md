@@ -34,7 +34,11 @@ Use `study_help(topic="student"|"hosts"|"languages"|"capabilities")` for on-dema
 
 `study_agenda` combines cached classes, deadlines and active local tasks. Page with next_offset; show unknown_dates and dated coverage. London dates define the requested range, display_timezone only changes added display timestamps. Date-only deadlines retain their day without an invented time. Local done is not university submission. Refresh study_timetable to import the current personal activity snapshot for planning. Official ICS imports remain available for other calendars.
 
-The Windows wizard selects the 14-tool daily profile; advanced operations are available through `study_more`. Other generated local-host entries use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
+The Windows wizard selects the 15-tool daily profile; advanced operations are available through `study_more`. Other generated local-host entries use the student profile. The three legacy developer tools are absent there; use the automatic school tools. Standard MCP tools are the shared core, not a Codex-only dependency. Configuration or bridge tests do not prove another host's full model acceptance.
+
+## NMR raw data
+
+Use `study_nmr` directly. Preserve leading-zero sample references. Ask in the conversation for only non-secret missing fields listed in `needed`, then `resume` the same request. `connect` provides a protected plugin-owned panel with URL elicitation where supported; never collect passwords through chat, ordinary elicitation fields or tool arguments. The panel must be opened on the runtime computer, and its real host UX is not yet universally accepted. NOMAD requires its own account. Legacy 3OR/2OR access requires explicit scoped consent for unencrypted HTTP, with no TLS bypass. Do not assume old data migrated to NOMAD. Select observed datasets/experiments; download a unique match or ask about ambiguous dates. Use `study_export_files` for original bytes and require host/destination receipt before claiming delivery. No instrument operation, account registration or spectral processing is implemented. See `docs/NMR.md`.
 
 ## Start from the request
 

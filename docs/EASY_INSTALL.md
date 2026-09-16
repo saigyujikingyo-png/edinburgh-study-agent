@@ -1,8 +1,8 @@
-# Easy installation — 0.7.2 student preview
+# Easy installation — 0.8.0 student preview
 
 ## Windows x64
 
-Download the Windows setup ZIP from the [0.7.2 release](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.7.2), extract the whole archive, and double-click **Install.cmd**. Keep the `payload` folder beside it.
+Download the Windows setup ZIP from the [0.8.0 release](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.0), extract the whole archive, and double-click **Install.cmd**. Keep the `payload` folder beside it.
 
 The setup page runs temporarily on this computer's loopback interface. Its private URL is random, external origins are rejected, and no page assets or installation data are sent to a hosted setup service. Select English or Chinese, choose a local agent, and click **Install / update**. Select **Finish** to stop the helper; an abandoned idle helper also expires.
 

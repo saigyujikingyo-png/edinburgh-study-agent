@@ -1,8 +1,10 @@
 # Output contracts and acceptance coverage
 
-Shared rule: **2026-09-14.1**, section 12. Product implementation: **0.7.2 student preview**. Public output contract: **version 1**. These are separate version numbers. Implementation in the checkout does not establish that a release package or an account installation has been accepted.
+Shared rule: **2026-09-14.1**, section 12. Product implementation: **0.8.0 student preview**. Public output contract: **version 1**. These are separate version numbers. Implementation in the checkout does not establish that a release package or an account installation has been accepted.
 
-The shared registry now declares output schemas for all **38 public tool names**: **37** in the full catalog, **34** in the student catalog and **14** in the daily catalog. The daily entrypoint exposes **21 advanced operations** through on-demand discovery. All advertised tools have `outputSchema`; each advanced operation has the same complete output contract as its direct tool.
+The shared registry now declares output schemas for all **39 public tool names**: **38** in the full catalog, **35** in the student catalog and **15** in the daily catalog. The daily entrypoint exposes **21 advanced operations** through on-demand discovery. All advertised tools have `outputSchema`; each advanced operation has the same complete output contract as its direct tool.
+
+The `study_nmr` contract validates status, missing input/authentication, pending protected connection, explicit selection, ready data, no matches, unavailable/cancelled acquisition, verified download and disconnection. Closed metadata schemas keep secrets and binary data out of tool text; required download fields prevent a bare success claim. The same original-file export contract applies to verified NMR records. See [NMR design and acceptance boundaries](NMR.md). True host credential UX and live NOMAD acceptance are separate from synthetic state/ZIP/DPAPI/MCP checks.
 
 ## Implemented boundary
 

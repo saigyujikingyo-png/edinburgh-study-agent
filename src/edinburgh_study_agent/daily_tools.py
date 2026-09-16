@@ -1,6 +1,7 @@
 """Small daily catalog; advanced operations are described only on demand."""
 
 DAILY = {
+    "study_nmr": "Find/download your NMR raw data through NOMAD or the legacy teaching archive. Keep leading-zero sample IDs. Missing information returns a resumable request; passwords use the protected connection panel, never chat or browser automation.",
     "study_status": "Check connection, version and cached freshness. This does not refresh campus login.",
     "study_live_courses": "Refresh your Learn courses. A terminal response is ready; poll only running jobs.",
     "study_results": "Read your EUCLID marks across academic years; all is the default. Use year summaries, without inferring degree rules.",

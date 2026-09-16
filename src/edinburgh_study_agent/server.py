@@ -5,6 +5,7 @@ import os
 from functools import lru_cache
 from typing import Literal, Annotated
 from pydantic import Field
+from mcp.server.fastmcp import Context
 from .protocol import PortableFastMCP
 from mcp.types import CallToolResult, TextContent, ToolAnnotations, Icon
 from .downloads import download_resource, list_downloads
@@ -29,7 +30,8 @@ mcp = PortableFastMCP("UoE Companion",
     "For schedules use study_timetable directly (including semester or a PDF item_id); materials use study_materials, Learn updates/unread counters use study_messages, public dates/events use study_events. These return ready-to-use data with internal caching. Do not inspect host files, install PDF tools, write parsers or build a website for basic queries. "
     "For live school data use study_live_courses, study_live_resources and study_download_files with the plugin-owned campus session. Poll study_school_job until terminal. Use study_connect_school only when login is needed. No host browser is required. "
     "Never use screenshots or coordinate clicks. Download files with study_download_files without Save As. For EUCLID, events, internships and other resources use study_services and study_read_service; organise them with study_collect and local tasks. Read verified documents using study_read_file. For originals needed by ChatGPT or Drive, use study_export_files with selected downloaded item_ids; only claim destination upload after an actual host receipt and destination readback. "
-    "These tools automate supported school DOM pages, store dated evidence and tasks, and download verified files; no registered university REST integration. "
+    "For NMR raw data use study_nmr; preserve leading-zero sample IDs. Ask for fields listed by needs_input, then resume the same request. Use connect for the protected NMR panel, never collect passwords in chat/tool arguments. Legacy HTTP needs explicit scoped consent. NOMAD is a separate account; no migration from the old archive is assumed. "
+    "These tools use supported school pages and the NMR API, store dated evidence and tasks, and download verified files; no university endorsement. "
     "Compact responses are default; use next_offset to page and detail=full only when needed. study_school_job waits up to 20 seconds; do not rapid-poll. "
     "Read saved files locally with study_read_file or study_read_resource(refresh=False); use refresh=True when current remote contents are required. "
     "Use study_help for student workflows, hosts and language guidance. Answer in the user language when locale=auto; otherwise honour study_preferences. Preserve official names, course IDs, original dates and source evidence. study_agenda unifies cached classes, deadlines and active local tasks. "
@@ -64,7 +66,7 @@ def study_status(include_capabilities: bool = False) -> CallToolResult:
     value=store().status()
     value["audience"]="students"
     value["tool_profile"]=TOOL_PROFILE
-    value["basic_workflows"]={"schedules":"study_timetable","course_files":"study_materials", "export_original_files":"study_export_files",
+    value["basic_workflows"]={"schedules":"study_timetable","course_files":"study_materials", "export_original_files":"study_export_files", "nmr_raw_data":"study_nmr",
         "learn_updates_and_unread":"study_messages","public_dates_events":"study_events",
         "older_chat_work_catalog":"study_read_service: timetable + query='semester 1'; events for public dates; learn + query='activity' or 'inboxes'. Timetable item_id reads a course PDF."}
     value["preferences"]=localization.preferences(store())["preferences"]
@@ -94,6 +96,42 @@ def study_capture(observation: Observation) -> CallToolResult:
     """Save evidence actually read in the browser. Include exact visible excerpts and honest scope/coverage.
     No cookies, passwords, auth links or guessed dates. Items missing from this page are retained."""
     return result(store().capture(observation))
+
+@mcp.tool(annotations=WEB, structured_output=False)
+async def study_nmr(action: Literal["status", "find", "resume", "connect", "download", "forget"] = "status",
+                    provider: Literal["auto", "nomad", "legacy"] = "auto", sample: str | None = None,
+                    request_id: str | None = None, selection_id: str | None = None,
+                    group: Literal["3OR", "2OR"] | None = None, start_date: str | None = None,
+                    end_date: str | None = None, archive: Literal["archive", "backup"] | None = None,
+                    page: int = 1, limit: int = 10, allow_insecure_http: bool = False,
+                    max_megabytes: int = 32, ctx: Context | None = None) -> CallToolResult:
+    """Acquire your NMR raw data without browser clicks. Missing fields return needs_input; ask in chat and resume request_id. Passwords ONLY in the protected connect panel. Separate NOMAD account; legacy groups 3OR/2OR need explicit HTTP consent. find lists bounded matches; download accepts an observed selection_id or finds a unique sample. ZIPs are verified without processing; export via study_export_files. Never guess migration, ownership or sample dates."""
+    import asyncio
+    import threading
+    from . import nmr
+    cancellation = threading.Event()
+    worker = asyncio.create_task(asyncio.to_thread(nmr.run, store(), action, provider=provider, sample=sample,
+        request_id=request_id, selection_id=selection_id, group=group, start_date=start_date,
+        end_date=end_date, archive=archive, page=page, limit=limit,
+        allow_insecure_http=allow_insecure_http, max_megabytes=max_megabytes, cancel_event=cancellation))
+    try:
+        value = await asyncio.shield(worker)
+    except asyncio.CancelledError:
+        cancellation.set()
+        worker.add_done_callback(lambda task: task.exception() if not task.cancelled() else None)
+        raise
+    if value["state"] == "authentication_pending" and ctx is not None:
+        capabilities = getattr(getattr(ctx.session, "client_params", None), "capabilities", None)
+        elicitation = getattr(capabilities, "elicitation", None)
+        if elicitation is not None and getattr(elicitation, "url", None) is not None:
+            try:
+                await ctx.elicit_url(message=value["message"], url=value["connection"]["url"],
+                                     elicitation_id=value["connection"]["connection_id"])
+            except Exception:
+                # A host without functioning URL elicitation still receives its
+                # resumable request and protected connection link, never a secret form.
+                pass
+    return result(value)
 
 @mcp.tool(annotations=READ, structured_output=False)
 def study_search(query: str = "", kind: Kind | None = None,

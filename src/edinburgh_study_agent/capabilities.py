@@ -1,6 +1,7 @@
 """Public capability boundaries, independent of a user's private access state."""
 CAPABILITIES = {
     "implemented": [
+        "NMR raw-data API/teaching-archive acquisition, resumable questions, protected local credential panel, bounded ZIP/member validation and original file export",
         "Learn course/content discovery, verified downloads and document text reading",
         "Batch export of verified cached originals as MCP file attachments or a ZIP with manifest; host and cloud receipts remain separate",
         "Own EUCLID course marks and grades across loaded academic years; read-only, not an official transcript",
@@ -16,11 +17,12 @@ CAPABILITIES = {
         "Ten-language service catalog, persistent preferences and per-call language overrides",
         "Portable MCP schemas, student tool profile and host configuration generator/merge installers",
         "Windows x64 setup ZIP with bundled Python, local bilingual wizard, checksum verification, configuration backups and runtime rollback",
-        "14-tool daily profile with on-demand advanced operations; original student/full profiles remain compatible",
+        "15-tool daily profile with on-demand advanced operations; original student/full profiles remain compatible",
         "Official DeepSeek MCP bridge integration tested with a registration fixture",
         "Local ICS import/export; one private profile and connection per person",
     ],
     "not_implemented": [
+        "NMR account creation, instrument operation/booking, experiment submission, spectral processing and automatic old-to-NOMAD migration",
         "Shared hosted multi-user service or one public Work connection for all users",
         "Coursework submission, marking, grade changes, attendance or bulk student administration",
         "Job applications, event booking, enrolment changes or message sending",
@@ -30,10 +32,11 @@ CAPABILITIES = {
     ],
     "out_of_scope": ["University email and mailbox workflows; handled through Outlook"],
     "unverified": [
+        "Authenticated live NOMAD retrieval and real host NMR credential-panel acceptance; remote/mobile browsers cannot reach a campus computer's loopback panel",
         "Full Claude, WorkBuddy and DeepSeek model-turn acceptance; configuration/protocol/bridge tests are narrower",
         "Native-speaker review of every catalog translation and automatic translation of all source documents",
         "Teacher/staff-only Learn, EUCLID and administration pages",
-        "Every feature of all 17 directory entries; actual coverage is per user and service",
+        "Every feature of all directory entries; actual coverage is per user and service",
         "Live campus operation on macOS/Linux; Windows is the campus acceptance host",
     ],
     "sharing": "Share the source/install package. Each person supplies their own campus login and private MCP/Work connection.",

@@ -77,7 +77,7 @@ SERVICE_PROPERTIES = {
     "id": IDENTIFIER, "title": STR, "official_name": STR,
     "category": STR, "category_id": enum("portal", "study", "record", "resources", "careers", "events", "support"),
     "url": STR, "access": enum("campus", "public", "mixed"),
-    "topics": STR, "adapter": enum("learn"), "launch_label": STR, "recommended_section": STR,
+    "topics": STR, "adapter": enum("learn", "nmr"), "launch_label": STR, "recommended_section": STR,
     "supported_actions": arr(STR), "last_check": nullable(SERVICE_CHECK), "coverage": STR,
 }
 SERVICE = obj(SERVICE_PROPERTIES, ("id", "title", "official_name", "category", "category_id", "url",
@@ -119,7 +119,7 @@ OBSERVATION = obj({
 }, ("source", "source_url", "title", "observed_at", "scope", "coverage", "authentication", "text"))
 OBSERVATION["anyOf"] = [{"required": ["items"]}, {"required": ["item_count"]}]
 
-STUDENT_GUIDANCE = obj({"workflow": arr(STR), "login": STR, "coverage": STR},
+STUDENT_GUIDANCE = obj({"workflow": arr(STR), "login": STR, "coverage": STR, "nmr": STR},
                        ("workflow", "login", "coverage"))
 HOST_GUIDANCE = obj({
     "core": STR, "setup": STR,
@@ -179,7 +179,7 @@ OUTPUTS = {
         "live_connection_checked": enum(False), "capabilities": arr(STR), "unsupported": arr(STR),
         "privacy": STR, "audience": enum("students"), "tool_profile": enum("daily", "student", "full"),
         "basic_workflows": obj({
-            "schedules": STR, "course_files": STR, "export_original_files": STR, "learn_updates_and_unread": STR,
+            "schedules": STR, "course_files": STR, "export_original_files": STR, "nmr_raw_data": STR, "learn_updates_and_unread": STR,
             "public_dates_events": STR, "older_chat_work_catalog": STR, "advanced_operations": STR,
         }, ("schedules", "course_files", "learn_updates_and_unread", "public_dates_events")),
         "preferences": PREFERENCES, "feature_status": CAPABILITIES,
