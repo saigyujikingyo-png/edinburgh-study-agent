@@ -38,7 +38,11 @@ The Windows wizard selects the 15-tool daily profile; advanced operations are av
 
 ## NMR raw data
 
-Use `study_nmr` directly. Preserve leading-zero sample references. Ask in the conversation for only non-secret missing fields listed in `needed`, then `resume` the same request. `connect` provides a protected plugin-owned panel with URL elicitation where supported; never collect passwords through chat, ordinary elicitation fields or tool arguments. The panel must be opened on the runtime computer, and its real host UX is not yet universally accepted. NOMAD requires its own account. Legacy 3OR/2OR access requires explicit scoped consent for unencrypted HTTP, with no TLS bypass. Do not assume old data migrated to NOMAD. Select observed datasets/experiments; download a unique match or ask about ambiguous dates. Use `study_export_files` for original bytes and require host/destination receipt before claiming delivery. No instrument operation, account registration or spectral processing is implemented. See `docs/NMR.md`.
+Use `study_nmr` directly with the sample number; reuse the saved source/group. Preserve leading zeros. Ask only for the non-secret fields in `needed`, in chat or a supported host form, then `resume` the same request. Resume preserves the original download intent. If a connection exists, do not ask the user to log in, reopen a panel or reconfirm saved HTTP permission.
+
+When credentials are missing, the tool offers a small plugin-owned form via URL elicitation or a clickable link. Never automate browser/school GUI, take screenshots or collect passwords in chat, ordinary elicitation or tool arguments. On Windows the user can remember the encrypted teaching-group connection and its HTTP permission once. `connect` reuses valid setup; `reconnect` replaces a panel; a rejected form also rotates on the next `connect`. Opening a local form alone sends no school request and is not a reason for another transmission-permission question. Do not recycle a failed URL manually.
+
+The credential form must be opened on the runtime computer; remote/mobile setup remains unsupported. NOMAD uses its own expiring session, and live NOMAD acceptance is pending. No TLS bypass or assumed old-to-new migration. Download observed/unique selections, ask about ambiguous dates, and use `study_export_files` with host/destination readback for original-byte delivery. No instrument operation, account registration or spectrum processing. See `docs/NMR.md`.
 
 ## Start from the request
 

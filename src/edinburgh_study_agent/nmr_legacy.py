@@ -1,7 +1,7 @@
 """Read the observed teaching archive form; never follow its credential links.
 
 This adapter is limited to the two teaching groups documented in the supplied
-handout. HTTP requires explicit consent on each saved acquisition request.
+handout. HTTP requires explicit consent on the acquisition request or remembered group connection.
 """
 from __future__ import annotations
 

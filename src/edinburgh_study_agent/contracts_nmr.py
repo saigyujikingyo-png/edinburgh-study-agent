@@ -13,13 +13,14 @@ DATASET = obj({"dataset_name": ID, "title": TEXT, "submitted_at": nullable(TEXT)
                "user": TEXT, "group": TEXT, "instrument": TEXT}, ("dataset_name", "title", "user", "group", "instrument"))
 FIELDS = {
     "state": enum("status", "needs_input", "needs_auth", "needs_selection", "ready", "downloaded",
-                  "no_matches", "unavailable", "authentication_pending", "disconnected"),
+                  "no_matches", "unavailable", "authentication_pending", "connected", "disconnected"),
     "provider": PROVIDER, "message": TEXT, "request_id": ID, "sample": nullable(TEXT), "code": ID,
     "needed": arr(enum("provider", "sample", "group", "connection", "insecure_http_consent"), 5),
     "results": arr(RESULT, 50), "datasets": arr(DATASET, 20), "has_more": BOOL,
     "page": {"type": "integer", "minimum": 1, "maximum": 100},
     "connections": arr(obj({"provider": enum("nomad", "legacy"), "group": enum("3OR", "2OR"), "credentials_available": BOOL,
-                            "authentication": enum("missing", "authenticated", "credentials_supplied")},
+                            "authentication": enum("missing", "authenticated", "credentials_supplied"),
+                            "remembered": BOOL, "persistence": enum("windows_dpapi", "process_memory_only", "none")},
                            ("provider", "credentials_available", "authentication")), 3),
     "connection": obj({"url": TEXT, "connection_id": ID, "expires_at": TIMESTAMP,
                        "reachability": enum("runtime_computer_browser")}, ("url", "connection_id", "expires_at", "reachability")),
@@ -33,7 +34,7 @@ SCHEMA = obj(FIELDS, ("state", "provider", "message"))
 SCHEMA["allOf"] = [{"oneOf": [
     {"properties": {"state": {"enum": [state]}}, "required": fields}
     for state, fields in {
-        "status": ["connections"], "needs_input": ["request_id", "needed"],
+        "status": ["connections"], "connected": ["request_id", "connections"], "needs_input": ["request_id", "needed"],
         "needs_auth": ["request_id"], "needs_selection": ["request_id"],
         "ready": ["request_id", "results", "source_transport"],
         "downloaded": ["request_id", "files", "cache_hit", "source_transport"],

@@ -44,7 +44,11 @@ def env(tmp_path, monkeypatch):
             if state.get("cancel_after_transfer"): kwargs["cancel_event"].set()
             return len(state["body"])
     monkeypatch.setattr(nmr, "NomadClient", Client)
-    return store, state
+    yield store, state
+    for panel in list(nmr_auth._PANELS.values()):
+        if panel.root == tmp_path:
+            panel.stop.set()
+            panel.thread.join(2)
 
 
 def validate(value):
@@ -55,11 +59,12 @@ def validate(value):
 
 def test_missing_information_resumes_without_losing_zeroes(env):
     store, state = env
+    state["session"] = None
     first = validate(nmr.run(store, "find", sample="0042"))
     assert first["state"] == "needs_input" and first["needed"] == ["provider"]
     state["session"] = None
     second = validate(nmr.run(store, "resume", provider="nomad", request_id=first["request_id"]))
-    assert second["state"] == "needs_auth" and second["sample"] == "0042"
+    assert second["state"] == "authentication_pending" and second["sample"] == "0042"
     assert second["request_id"] == first["request_id"] and state["search_calls"] == 0
 
 
@@ -195,3 +200,20 @@ def test_missing_nmr_cache_recovers_via_nmr_tool(env):
     found = nmr.run(store, "find", provider="nomad", sample="0042")
     with pytest.raises(ValueError, match="study_nmr download"):
         delivery.export_files(store, [found["results"][0]["id"]])
+
+
+def test_resume_download_keeps_original_intent_after_sample_question(env):
+    store, state = env
+    missing = validate(nmr.run(store, "download", provider="nomad"))
+    assert missing["needed"] == ["sample"]
+    done = validate(nmr.run(store, "resume", request_id=missing["request_id"], sample="0042"))
+    assert done["state"] == "downloaded" and state["download_calls"] == 1
+
+
+def test_resume_download_accepts_observed_dataset_selection(env):
+    store, state = env
+    state["datasets"] = ["Synthetic-0042", "Other-0042"]
+    choices = validate(nmr.run(store, "download", provider="nomad", sample="0042"))
+    assert choices["state"] == "needs_selection"
+    done = validate(nmr.run(store, "resume", request_id=choices["request_id"], selection_id="Synthetic-0042"))
+    assert done["state"] == "downloaded" and state["search_calls"] == 1

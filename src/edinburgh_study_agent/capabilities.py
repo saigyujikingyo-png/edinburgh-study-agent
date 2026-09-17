@@ -1,7 +1,7 @@
 """Public capability boundaries, independent of a user's private access state."""
 CAPABILITIES = {
     "implemented": [
-        "NMR raw-data API/teaching-archive acquisition, resumable questions, protected local credential panel, bounded ZIP/member validation and original file export",
+        "NMR raw-data API/teaching-archive acquisition, resumable chat/host questions, remembered Windows teaching-group connections, protected local credential panel, bounded ZIP/member validation and original file export",
         "Learn course/content discovery, verified downloads and document text reading",
         "Batch export of verified cached originals as MCP file attachments or a ZIP with manifest; host and cloud receipts remain separate",
         "Own EUCLID course marks and grades across loaded academic years; read-only, not an official transcript",

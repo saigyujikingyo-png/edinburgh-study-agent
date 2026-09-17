@@ -49,7 +49,7 @@ def form(connection, panel):
     assert response.status_code == 200
     match = re.search(r'name="nonce" value="([A-Za-z0-9_-]+)"', response.text)
     assert match
-    return response, {"nonce": match.group(1)}
+    return response, {"nonce": match.group(1), **({"http_consent": "yes"} if 'name="http_consent"' in response.text else {})}
 
 
 def origin(panel):
@@ -200,18 +200,18 @@ def test_nomad_panel_logs_in_directly_without_returning_secrets(tmp_path, monkey
     assert panel["reachability"] == "runtime_computer_browser"
     with client() as connection:
         response, data = form(connection, panel)
-        assert "pending-sample-42" in response.text
+        assert "NOMAD username" in response.text
         assert "<script" not in response.text.lower()
         assert 'type="password"' in response.text
         assert 'form-action \'self\'' in response.headers["Content-Security-Policy"]
         assert response.headers["Cache-Control"].startswith("no-store")
-        assert response.headers["Referrer-Policy"] == "no-referrer"
+        assert response.headers["Referrer-Policy"] == "same-origin"
         assert response.headers["X-Frame-Options"] == "DENY"
         data.update(username="synthetic-student", password=PASSWORD)
         completed = post(connection, panel, data)
         assert completed.status_code == 200
         assert "Return to your agent" in completed.text
-        assert "pending-sample-42" in completed.text
+        assert "session is reused" in completed.text
         assert PASSWORD not in completed.text and TOKEN not in completed.text
     assert calls == [("synthetic-student", PASSWORD)]
     assert nmr_auth.get_session(tmp_path, "nomad")["token"] == TOKEN
@@ -220,10 +220,8 @@ def test_nomad_panel_logs_in_directly_without_returning_secrets(tmp_path, monkey
 
 
 def test_legacy_panel_does_not_connect_before_or_after_collecting_password(tmp_path, monkeypatch):
-    with pytest.raises(ValueError, match="^NMR_AUTH_HTTP_APPROVAL_REQUIRED$"):
-        nmr_auth.open_panel(tmp_path, "legacy", "3OR", "request-1")
     monkeypatch.setattr(nmr_auth, "NomadClient", lambda: pytest.fail("Legacy must not use NOMAD login"))
-    panel = nmr_auth.open_panel(tmp_path, "legacy", "3OR", "request-1", allow_insecure_http=True)
+    panel = nmr_auth.open_panel(tmp_path, "legacy", "3OR", "request-1")
     with client() as connection:
         response, data = form(connection, panel)
         assert "3OR" in response.text and "unencrypted HTTP" in response.text
@@ -285,7 +283,7 @@ def test_failed_login_keeps_request_and_sanitizes_error(tmp_path, monkeypatch):
         _, data = form(connection, panel)
         result = post(connection, panel, {**data, "username": "synthetic", "password": PASSWORD})
         assert result.status_code == 401
-        assert "retained-request" in result.text
+        assert "Your request is retained" in result.text
         assert PASSWORD not in result.text and TOKEN not in result.text and "C:/private" not in result.text
         assert connection.get(panel["url"]).status_code == 200
     assert nmr_auth.get_session(tmp_path, "nomad") is None

@@ -98,39 +98,19 @@ def study_capture(observation: Observation) -> CallToolResult:
     return result(store().capture(observation))
 
 @mcp.tool(annotations=WEB, structured_output=False)
-async def study_nmr(action: Literal["status", "find", "resume", "connect", "download", "forget"] = "status",
+async def study_nmr(action: Literal["status", "find", "resume", "connect", "reconnect", "download", "forget"] = "status",
                     provider: Literal["auto", "nomad", "legacy"] = "auto", sample: str | None = None,
                     request_id: str | None = None, selection_id: str | None = None,
                     group: Literal["3OR", "2OR"] | None = None, start_date: str | None = None,
                     end_date: str | None = None, archive: Literal["archive", "backup"] | None = None,
                     page: int = 1, limit: int = 10, allow_insecure_http: bool = False,
                     max_megabytes: int = 32, ctx: Context | None = None) -> CallToolResult:
-    """Acquire your NMR raw data without browser clicks. Missing fields return needs_input; ask in chat and resume request_id. Passwords ONLY in the protected connect panel. Separate NOMAD account; legacy groups 3OR/2OR need explicit HTTP consent. find lists bounded matches; download accepts an observed selection_id or finds a unique sample. ZIPs are verified without processing; export via study_export_files. Never guess migration, ownership or sample dates."""
-    import asyncio
-    import threading
-    from . import nmr
-    cancellation = threading.Event()
-    worker = asyncio.create_task(asyncio.to_thread(nmr.run, store(), action, provider=provider, sample=sample,
+    """Get your NMR raw data directly with a saved connection, without browser GUI. Ask only for missing non-secret sample/source/group fields in chat; a capable host shows a small form. Preserve leading zeros. First use offers a protected credential panel with remember/HTTP consent; connect reuses it, reconnect replaces it, forget removes it. Passwords never enter tool arguments. resume keeps the original download intent. Use study_export_files for verified original bytes. NOMAD and legacy archives are separate; never guess migration or ownership."""
+    from .nmr_input import interact
+    value = await interact(store(), action, ctx=ctx, provider=provider, sample=sample,
         request_id=request_id, selection_id=selection_id, group=group, start_date=start_date,
         end_date=end_date, archive=archive, page=page, limit=limit,
-        allow_insecure_http=allow_insecure_http, max_megabytes=max_megabytes, cancel_event=cancellation))
-    try:
-        value = await asyncio.shield(worker)
-    except asyncio.CancelledError:
-        cancellation.set()
-        worker.add_done_callback(lambda task: task.exception() if not task.cancelled() else None)
-        raise
-    if value["state"] == "authentication_pending" and ctx is not None:
-        capabilities = getattr(getattr(ctx.session, "client_params", None), "capabilities", None)
-        elicitation = getattr(capabilities, "elicitation", None)
-        if elicitation is not None and getattr(elicitation, "url", None) is not None:
-            try:
-                await ctx.elicit_url(message=value["message"], url=value["connection"]["url"],
-                                     elicitation_id=value["connection"]["connection_id"])
-            except Exception:
-                # A host without functioning URL elicitation still receives its
-                # resumable request and protected connection link, never a secret form.
-                pass
+        allow_insecure_http=allow_insecure_http, max_megabytes=max_megabytes)
     return result(value)
 
 @mcp.tool(annotations=READ, structured_output=False)
