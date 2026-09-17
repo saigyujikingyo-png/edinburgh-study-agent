@@ -39,7 +39,7 @@ def _request(store, request_id):
         return json.loads(row[0])
     return {"id": uuid.uuid4().hex, "provider": "auto", "sample": None, "group": None,
             "start_date": None, "end_date": None, "archive": "archive", "allow_insecure_http": False,
-            "candidates": []}
+            "candidates": [], "intent": "find"}
 
 
 def record(store, item_id):
@@ -88,7 +88,7 @@ def _download(store, request, selected, max_megabytes, cancel_event=None):
     from .nmr_auth import get_session
     session = get_session(store.root, request["provider"], request.get("group"))
     if not session:
-        return _reply(request, "needs_auth", "Ask the user to connect through the protected NMR panel, then resume this request. Never ask for a password in chat.", needed=["connection"])
+        return _connect(store, request)
     subject = session["user_id"] if request["provider"] == "nomad" else session["group"]
     if selected["subject"] != subject:
         raise NmrError("SCOPE_MISMATCH", "The NMR account changed. Search this sample again before downloading.")
@@ -137,11 +137,48 @@ def _download(store, request, selected, max_megabytes, cancel_event=None):
         pending.unlink(missing_ok=True)
 
 
+def _connections(store):
+    from .nmr_auth import get_session
+    found = []
+    for provider, group in (("nomad", None), *(("legacy", g) for g in GROUPS)):
+        session = get_session(store.root, provider, group)
+        if session and (session.get("provider") != provider or (group and session.get("group") != group)):
+            session = None
+        found.append({"provider": provider, **({"group": group} if group else {}),
+                      "credentials_available": bool(session),
+                      "authentication": session.get("authentication", "authenticated" if provider == "nomad" else "credentials_supplied") if session else "missing",
+                      "remembered": bool(session and session.get("remembered")),
+                      "persistence": session.get("persistence", "process_memory_only") if session else "none"})
+    return found
+
+
+def _connect(store, request, *, renew=False):
+    from .nmr_auth import open_panel
+    panel = open_panel(store.root, request["provider"], request.get("group"), request["id"],
+                       request["allow_insecure_http"], renew=renew)
+    return _reply(request, "authentication_pending",
+        "Offer this small plugin-owned form directly, using URL elicitation or a clickable link. "
+        "Do not operate school/browser GUI, use screenshots or request passwords in chat. "
+        "Opening this local form sends no school request. It can save the group connection and its HTTP permission; "
+        "after submission resume this request_id. Never request permission again merely to reopen a rejected form.",
+        connection=panel)
+
+
+def _failure(store, request, exc):
+    if exc.code == "AUTH_REQUIRED":
+        from .nmr_auth import forget_session
+        forget_session(store.root, request["provider"], request.get("group"))
+        return _reply(request, "needs_auth", "The school rejected this connection; it has been cleared. "
+                      "Use connect with this request_id for protected replacement, then resume. Do not retry the rejected credential.",
+                      code=exc.code, needed=["connection"])
+    return _reply(request, "unavailable", str(exc), code=exc.code)
+
+
 def run(store, action="status", *, provider="auto", sample=None, request_id=None, selection_id=None,
         group=None, start_date=None, end_date=None, archive=None, page=1, limit=10,
         allow_insecure_http=False, max_megabytes=32, cancel_event=None):
     from .nmr_auth import get_session, forget_session, open_panel
-    if action not in ("status", "find", "resume", "connect", "download", "forget"):
+    if action not in ("status", "find", "resume", "connect", "reconnect", "download", "forget"):
         raise ValueError("Unknown NMR action.")
     if provider not in ("auto", "nomad", "legacy") or group not in (None, *GROUPS):
         raise ValueError("Choose NOMAD or the supported legacy teaching group.")
@@ -152,14 +189,10 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
     date_range(start_date, end_date)
     _tables(store)
     if action == "status":
-        connections = []
-        for source, selected_group in (("nomad", None), *(("legacy", g) for g in GROUPS)):
-            session = get_session(store.root, source, selected_group)
-            connections.append({"provider": source, **({"group": selected_group} if selected_group else {}),
-                                "credentials_available": bool(session),
-                                "authentication": session.get("authentication", "authenticated" if source == "nomad" else "credentials_supplied") if session else "missing"})
-        return {"state": "status", "provider": "auto", "connections": connections,
-                "message": "NOMAD API and legacy teaching archive acquisition. NMR accounts are separate from campus SSO. Passwords use the protected panel; samples and dates can be answered in chat. Login/browser host acceptance is separate."}
+        return {"state": "status", "provider": "auto", "connections": _connections(store),
+                "message": "Reuse a saved NMR connection directly. Sample numbers can be supplied in chat or a supported host form. "
+                "connect is idempotent; reconnect replaces a failed panel; forget removes the saved connection. "
+                "Legacy remembered credentials include group-scoped HTTP consent. NOMAD uses its own expiring session."}
     request = _request(store, request_id)
     changes = {k: v for k, v in {"provider": provider if provider != "auto" else None,
         "sample": literal(sample) if sample is not None else None, "group": group,
@@ -169,7 +202,17 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
         request.pop("datasets", None)
         request["allow_insecure_http"] = False
     request.update(changes)
+    if request["provider"] == "auto" or (request["provider"] == "legacy" and not request["group"]):
+        available = [c for c in _connections(store) if c["credentials_available"]
+                     and (request["provider"] == "auto" or c["provider"] == request["provider"])]
+        if request["provider"] == "auto" and request["group"]:
+            request["provider"] = "legacy"
+        elif len(available) == 1:
+            request.update(provider=available[0]["provider"], group=available[0].get("group"))
     if request["provider"] == "nomad": request["group"] = None
+    if action in ("find", "download"):
+        request["intent"] = action
+    effective = request.get("intent", "find") if action == "resume" else action
     if request["archive"] not in ("archive", "backup"): raise ValueError("archive must be archive or backup.")
     date_range(request["start_date"], request["end_date"])
     if allow_insecure_http: request["allow_insecure_http"] = True
@@ -183,26 +226,37 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
     if action == "forget":
         forget_session(store.root, request["provider"], request["group"])
         return _reply(request, "disconnected", "NMR credentials removed; downloaded originals are retained.")
-    if request["provider"] == "legacy" and not request["allow_insecure_http"]:
-        return _reply(request, "needs_input", "Ask permission to send the teaching-group credential and retrieve this sample over unencrypted HTTP. Do not disable TLS validation.", needed=["insecure_http_consent"])
-    if action == "connect":
-        panel = open_panel(store.root, request["provider"], request["group"], request["id"], request["allow_insecure_http"])
-        return _reply(request, "authentication_pending", "Open this protected plugin panel on the computer running UoE Companion. No password enters chat or tool arguments. After connecting, resume this request. If there is no NOMAD account, ask about the legacy archive instead; account creation is not automated.", connection=panel)
-    if action == "download" and not selection_id and len(request["candidates"]) == 1:
+    session = get_session(store.root, request["provider"], request.get("group"))
+    if (request["provider"] == "legacy" and session and session.get("remembered")
+            and session.get("insecure_http_approved")):
+        request["allow_insecure_http"] = True
+        _save_request(store, request)
+    if action in ("connect", "reconnect"):
+        if session and action == "connect":
+            return _reply(request, "connected", "Saved connection is available; continue the sample request directly. "
+                          "No new password form or school request was made. Use reconnect only to replace it.",
+                          connections=[c for c in _connections(store) if c["provider"] == request["provider"]
+                                       and c.get("group") == request.get("group")])
+        return _connect(store, request, renew=action == "reconnect")
+    if effective == "download" and not selection_id and len(request["candidates"]) == 1:
         selection_id = request["candidates"][0]
-    if action == "download" and selection_id:
+    if effective == "download" and selection_id and selection_id not in request.get("datasets", []):
         if selection_id not in request["candidates"]: raise ValueError("Select an item returned for this NMR request.")
         selected = record(store, selection_id)
         if not selected: raise ValueError("NMR selection no longer exists. Search again.")
         try: return _download(store, request, selected, max_megabytes, cancel_event)
         except NmrError as exc:
-            return _reply(request, "needs_auth" if exc.code == "AUTH_REQUIRED" else "unavailable", str(exc), code=exc.code)
+            return _failure(store, request, exc)
         except ValueError as exc:
             if not str(exc).startswith("NMR_ARCHIVE_"): raise
             return _reply(request, "unavailable", "The archive failed raw-data validation. No verified download was recorded.", code=str(exc))
     session = get_session(store.root, request["provider"], request["group"])
     if not session:
-        return _reply(request, "needs_auth", "Connect using the protected NMR panel and this request_id, then resume. Never ask for a password in chat. A missing NOMAD account does not mean the old sample is unavailable.", needed=["connection"])
+        return _connect(store, request)
+    if request["provider"] == "legacy" and not request["allow_insecure_http"]:
+        return _reply(request, "needs_input", "This temporary connection has no saved HTTP permission. "
+                      "Ask for permission for this query, or connect once and remember the group for future queries.",
+                      needed=["insecure_http_consent"])
     try:
         check_cancel(cancel_event)
         if request["provider"] == "legacy":
@@ -237,14 +291,14 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
         if not saved:
             return _reply(request, "no_matches", "No matching record was observed in this selected archive/scope. This does not prove the sample is absent elsewhere. Ask for its date/group or whether to search backup; never infer migration to NOMAD.",
                           has_more=has_more, source_transport="https" if request["provider"] == "nomad" else "plaintext_http")
-        if action == "download" and len(saved) == 1:
+        if effective == "download" and len(saved) == 1:
             return _download(store, request, saved[0], max_megabytes, cancel_event)
         return _reply(request, "ready" if len(saved) == 1 else "needs_selection",
                       "Use download with this request_id and a returned id. If several records match, ask which sample/date before downloading.",
                       results=[_public(r) for r in saved], has_more=has_more,
                       source_transport="https" if request["provider"] == "nomad" else "plaintext_http")
     except NmrError as exc:
-        return _reply(request, "needs_auth" if exc.code == "AUTH_REQUIRED" else "unavailable", str(exc), code=exc.code)
+        return _failure(store, request, exc)
     except ValueError as exc:
         if not str(exc).startswith("NMR_ARCHIVE_"): raise
         return _reply(request, "unavailable", "The archive failed raw-data validation. No verified download was recorded.", code=str(exc))

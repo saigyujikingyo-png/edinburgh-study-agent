@@ -4,7 +4,7 @@ UoE Companion is a student-focused MCP server. ChatGPT Chat/Work, Codex, Claude,
 
 ## Install once
 
-Windows x64 students should use the [bundled setup ZIP](EASY_INSTALL.md): extract it, double-click Install.cmd and select their local agent. It includes Python and dependencies, merges WorkBuddy/Claude Desktop configuration with backups and enables the 13-tool daily profile. Other host documents are generated in the private connections folder. Chrome or Edge is required.
+Windows x64 students should use the [bundled setup ZIP](EASY_INSTALL.md): extract it, double-click Install.cmd and select their local agent. It includes Python and dependencies, merges WorkBuddy/Claude Desktop configuration with backups and enables the 15-tool daily profile. Other host documents are generated in the private connections folder. Chrome or Edge is required.
 
 The following commands remain an optional developer/manual route. Install Python 3.11+ and Chrome, obtain the source release, then run `python scripts/install_runtime.py`. On Windows:
 

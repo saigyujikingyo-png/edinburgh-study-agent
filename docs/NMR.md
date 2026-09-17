@@ -27,12 +27,13 @@ Natural-language examples:
 - “Download the experiment from 12 March, keeping the raw data.”
 - “Find my NOMAD sample and attach the original ZIP.”
 
-`sample` is text; leading zeros are significant. `find` returns a saved `request_id`. If information is missing, the agent asks for only the listed non-secret fields and calls `resume` with the same ID. Changing source, sample, group, archive or date invalidates the previous selection and scoped HTTP consent. The last 100 request contexts are retained privately.
+`sample` is text; leading zeros are significant. `find` returns a saved `request_id`. If information is missing, the agent asks for only the listed non-secret fields and calls `resume` with the same ID. Hosts advertising MCP form elicitation may show these fields in their own small input form. No password or token can enter that form. A resumed download remains a download, including after dataset selection. Changing source, sample, group, archive or date invalidates the previous selection and query-only HTTP consent. A remembered connection reuses only its own group-scoped HTTP permission. If exactly one compatible connection is saved, its source/group is selected automatically; ambiguous connections are not tried in turn. The last 100 request contexts are retained privately.
 
 | State | Agent action |
 | --- | --- |
 | `needs_input` | Ask for the listed sample/source/group/consent information; preserve the request. |
-| `needs_auth` | Offer the protected plugin connection panel using `connect`; never ask for a password in chat. |
+| `needs_auth` | The school rejected a connection. Use `connect` to replace it through protected input; do not retry the rejected credential. |
+| `connected` | The existing connection is available. Continue the sample request; do not open a new credential form. |
 | `authentication_pending` | Complete protected input, then resume the same request. Opening the panel alone is not authentication. |
 | `needs_selection` | Ask which returned date/dataset/experiment is intended. Do not download all ambiguous matches. |
 | `ready` | Use a returned selection ID, or download the unique saved selection. |
@@ -40,19 +41,25 @@ Natural-language examples:
 | `downloaded` | Original received bytes passed container/member validation. Use file export for host delivery. |
 | `unavailable` | Report the stable code and retained request. Do not loop or silently switch to browser automation. |
 
-`download` can combine search and acquisition when a new query has exactly one result. A repeated download of a saved selection checks and reuses its intact cache without repeating the network search or transfer. `forget` removes the selected NMR connection, preserving downloaded data.
+`download` can combine search and acquisition when a new query has exactly one result. A repeated download of a saved selection checks and reuses its intact cache without repeating the network search or transfer. `connect` reuses saved credentials; `reconnect` creates a fresh replacement panel and invalidates the previous panel for that request. A form rejected by its browser-origin check is renewed on the next `connect`, instead of recycling the same failed link. `forget` removes the selected NMR connection, preserving downloaded data.
 
 Legacy requests default to the explicitly reported archive range **2015-01-01 through today** unless a narrower date is supplied. The default is deliberately wider than the old page's one-year form window. Backup is a separate, user-selected scope; the adapter does not scan all groups or follow username/history links. There is no guarantee that every historic file is still retained.
 
 ## Protected credential adapter
 
-Passwords are **not MCP parameters**, elicitation form fields, model text, source files or log content. `connect` opens a temporary plugin-owned loopback panel; the user enters the NMR credential there, without navigating the school's form. A capable host receives a standard **URL-mode elicitation** request; other hosts receive the same protected link and resumable request. The MCP specification [forbids collecting passwords through ordinary form elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation).
+Passwords are **not MCP parameters**, elicitation form fields, model text, source files or log content. When credentials are missing, `find`/`download` offers a temporary plugin-owned loopback panel directly; `connect` can also offer it; the user enters the NMR credential there, without navigating the school's form. A capable host receives a standard **URL-mode elicitation** request; other hosts receive the same protected link and resumable request. The MCP specification [forbids collecting passwords through ordinary form elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation).
 
-The panel has a ten-minute lifetime, exact Host/Origin checks, a separate CSRF nonce, bounded requests, no external assets, no access logs and no public listener. Successful submission or disconnection invalidates it. Windows saves the session using current-user DPAPI; NOMAD passwords are discarded after login. Other operating systems keep sessions only in the running process. Expired or rejected sessions require protected reconnection; automatic renewal/account provisioning is not implemented.
+The small form follows the browser's English/Chinese language and light/dark preference. It uses no JavaScript or external assets. Samples are normally answered in chat or a host form, so ordinary use does not require opening a browser.
+
+On Windows, **Remember this connection** saves the old teaching group's credential with current-user DPAPI until replacement, server rejection or `forget`. Its checkbox is shown explicitly and selected by default. HTTP consent is given in the same form and retained only for that group; later samples do not need another setup/consent round. Leaving Remember unchecked keeps the previous one-hour temporary behavior. Existing 0.8.0 temporary credentials are not silently promoted to remembered credentials. Other operating systems still use process memory only, as explained in the form.
+
+NOMAD passwords are still discarded after successful login. Its encrypted token is reused until the server expires or rejects it; automatic password-based renewal/account provisioning remains unimplemented.
+
+The panel has a ten-minute lifetime, exact Host/path checks, a separate CSRF nonce, a per-panel HttpOnly/SameSite cookie, bounded requests, no access logs and no public listener. Foreign origins and cross-site requests are rejected. Missing/null Origin is accepted only with the exact same-panel Referer, matching cookie and nonce. `Referrer-Policy: same-origin` fixes the normal form POSTs rejected by 0.8.0's `no-referrer` policy, while keeping the local URL out of off-site referrers. See [MDN's Origin-header explanation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Origin). Successful submission or disconnection invalidates the panel. Opening or replacing this **local form** sends no credential to the school and does not require a new HTTP-transmission approval.
 
 **Reachability matters:** the panel must be opened by a browser on the computer running UoE Companion. A cloud model can continue using that connected backend, but a phone or another computer cannot open its loopback panel. Real URL-elicitation UX in each host remains a separate acceptance gate. The plugin does not claim a universal inline credential widget or remote secure-setup service.
 
-The old archive serves HTTP. Its HTTPS certificate failed ordinary validation during this check. The plugin never disables certificate verification: it asks explicit consent before sending the teaching-group credential over HTTP for the saved query. ZIP CRC/SHA-256 checks establish byte integrity, **not encrypted transport or source authenticity**. No old credential is reused against NOMAD.
+The old archive serves HTTP. Its HTTPS certificate failed ordinary validation during this check. The plugin never disables certificate verification: it requires explicit consent before sending the teaching-group credential over HTTP, either for the saved query or through the remembered group connection. ZIP CRC/SHA-256 checks establish byte integrity, **not encrypted transport or source authenticity**. No old credential is reused against NOMAD.
 
 ## Data and delivery contracts
 

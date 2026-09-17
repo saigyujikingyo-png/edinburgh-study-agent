@@ -10,8 +10,8 @@ import ctypes
 from ctypes import wintypes
 from datetime import datetime, timezone
 import hashlib
-import html
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.cookies import SimpleCookie, CookieError
 import json
 import math
 import os
@@ -69,9 +69,16 @@ def _validated(session, provider, group, *, allow_expired=False):
     fields = ({"provider", "token", "user_id", "username", "group", "expires_at"}
               if provider == "nomad" else
               {"provider", "group", "password", "expires_at", "insecure_http_approved"})
-    if set(session) - fields - {"authentication", "persistence"} or not fields.issubset(session):
+    if set(session) - fields - {"authentication", "persistence", "remembered"} or not fields.issubset(session):
         raise ValueError("NMR_AUTH_INVALID_SESSION")
+    remembered = session.get("remembered", False)
+    if type(remembered) is not bool or (remembered and provider != "legacy"):
+        raise ValueError("NMR_AUTH_INVALID_SESSION")
+    # A remembered teaching credential is not a server session. Persist it until
+    # explicit replacement/forget; clients receive a short-lived in-memory view.
     expires = session["expires_at"]
+    if remembered and expires is None:
+        expires = time.time() + 3600
     maximum_lifetime = 366 * 86400 if provider == "nomad" else 3600
     if isinstance(expires, bool) or not isinstance(expires, (int, float)):
         raise ValueError("NMR_AUTH_INVALID_SESSION")
@@ -95,6 +102,8 @@ def _validated(session, provider, group, *, allow_expired=False):
     if not valid:
         raise ValueError("NMR_AUTH_INVALID_SESSION")
     value = {name: session[name] for name in fields}
+    if remembered:
+        value.update(remembered=True, expires_at=None)
     try:
         if len(json.dumps(value, ensure_ascii=False, allow_nan=False).encode("utf-8")) > MAX_SESSION_BYTES:
             raise ValueError()
@@ -109,7 +118,7 @@ def _persistence():
 
 def _receipt(session):
     return {"provider": session["provider"], "expires_at": session["expires_at"],
-            "persistence": _persistence(),
+            "persistence": _persistence(), "remembered": session.get("remembered", False),
             "authentication": "authenticated" if session["provider"] == "nomad" else "credentials_supplied"}
 
 
@@ -175,16 +184,27 @@ def _vault_path(root, provider, group, *, create=False):
         raise ValueError("NMR_AUTH_STORAGE_UNAVAILABLE") from None
 
 
+def _expired(value):
+    return not value.get("remembered", False) and value["expires_at"] <= time.time()
+
+
+def _client_view(value):
+    result = {**value, **_receipt(value)}
+    if value.get("remembered"):
+        result["expires_at"] = time.time() + 3600
+    return result
+
+
 def get_session(root: Path, provider: str, group: str | None = None) -> dict | None:
     """Return a private, client-compatible session. Never expose it as MCP output."""
     key = _identity(root, provider, group)
     with _LOCK:
         if not _WINDOWS:
             value = _MEMORY.get(key)
-            if value is None or value["expires_at"] <= time.time():
+            if value is None or _expired(value):
                 _MEMORY.pop(key, None)
                 return None
-            return {**value, **_receipt(value)}
+            return _client_view(value)
         path = _vault_path(root, provider, group)
         try:
             with path.open("rb") as stream:
@@ -203,7 +223,7 @@ def get_session(root: Path, provider: str, group: str | None = None) -> dict | N
                                provider, group, allow_expired=True)
         except (ValueError, UnicodeError, TypeError, RecursionError):
             raise ValueError("NMR_AUTH_INVALID_VAULT") from None
-        return None if value["expires_at"] <= time.time() else {**value, **_receipt(value)}
+        return None if _expired(value) else _client_view(value)
 
 
 def save_session(root: Path, provider: str, session: dict, group: str | None = None) -> dict:
@@ -212,7 +232,7 @@ def save_session(root: Path, provider: str, session: dict, group: str | None = N
     value = _validated(session, provider, group)
     with _LOCK:
         if not _WINDOWS:
-            for expired in [entry for entry, saved in _MEMORY.items() if saved["expires_at"] <= time.time()]:
+            for expired in [entry for entry, saved in _MEMORY.items() if _expired(saved)]:
                 _MEMORY.pop(expired, None)
             if key not in _MEMORY and len(_MEMORY) >= MAX_MEMORY_SESSIONS:
                 raise ValueError("NMR_AUTH_STORAGE_LIMIT")
@@ -275,6 +295,11 @@ class _Panel:
         self.connection_id = secrets.token_hex(16)
         self.path = "/" + secrets.token_urlsafe(32) + "/"
         self.nonce = secrets.token_urlsafe(32)
+        self.cookie_name = "uoe_nmr_" + self.connection_id
+        self.cookie = secrets.token_urlsafe(32)
+        self.rejected = False
+        self.http_approved = False
+        self.remembered = False
         self.stop = threading.Event()
         self.deadline = time.monotonic() + PANEL_TTL_SECONDS
         self.expires_at = datetime.fromtimestamp(time.time() + PANEL_TTL_SECONDS, timezone.utc).isoformat()
@@ -284,33 +309,10 @@ class _Panel:
         return {"url": self.origin + self.path, "connection_id": self.connection_id,
                 "expires_at": self.expires_at, "reachability": "runtime_computer_browser"}
 
-    def page(self, *, error=False, complete=False):
-        provider = "NOMAD" if self.provider == "nomad" else "Legacy archive / " + self.group
-        state = ""
-        if complete:
-            state = ("NOMAD sign-in completed." if self.provider == "nomad" else
-                     "Credentials supplied; access is not yet verified. Your agent will check the selected archive.")
-            state += " Return to your agent to resume the retained request. You may close this panel."
-        elif error:
-            state = "Sign-in could not be completed. Check the account and campus network, then retry. The request is retained."
-        persistence = ("The session is protected for your Windows user on this computer." if _WINDOWS else
-                       "Session-only storage: credentials remain in this process and disappear when it stops.")
-        warning = ("NOMAD credentials are sent to the University's HTTPS login service." if self.provider == "nomad" else
-                   "You approved legacy access over unencrypted HTTP. The password is held for at most one hour; this panel does not query the archive.")
-        form = ""
-        if not complete:
-            username = ('<label>NMR username <input name="username" autocomplete="username" maxlength="128" required></label>'
-                        if self.provider == "nomad" else "")
-            form = (f'<form method="post" action="{self.path}" autocomplete="off">'
-                    f'<input type="hidden" name="nonce" value="{self.nonce}">{username}'
-                    '<label>NMR password <input name="password" type="password" autocomplete="current-password" '
-                    'maxlength="1024" required></label><button type="submit">Connect and retain request</button></form>')
-        return ('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-                '<title>UoE Companion NMR connection</title><style>body{font:17px system-ui;max-width:620px;margin:48px auto;padding:0 24px;line-height:1.6}'
-                'label,input{display:block;margin:12px 0}input{font:inherit;width:100%;box-sizing:border-box}button{font:inherit;padding:10px 16px}</style>'
-                f'<h1>Connect {html.escape(provider)}</h1><p>{html.escape(state)}</p><p>{html.escape(warning)}</p>'
-                '<p>Enter credentials here, never in the conversation. This panel works only in a browser on the computer running UoE Companion.</p>'
-                f'<p>{html.escape(persistence)}</p>{form}<p>Retained request: <code>{html.escape(self.request_id)}</code></p></html>')
+    def page(self, *, error=False, complete=False, locale="en"):
+        from .nmr_form import render
+        return render(self, error=error, complete=complete, locale=locale, persistent=_WINDOWS)
+
 
 
 def _handler(panel):
@@ -342,7 +344,11 @@ def _handler(panel):
             self.send_header("Content-Length", str(len(raw)))
             self.send_header("Cache-Control", "no-store, max-age=0")
             self.send_header("Pragma", "no-cache")
-            self.send_header("Referrer-Policy", "no-referrer")
+            # no-referrer makes normal browser form POSTs send Origin: null.
+            # same-origin retains local provenance without leaking it off-site.
+            self.send_header("Referrer-Policy", "same-origin")
+            if status == 200 and self.command == "GET":
+                self.send_header("Set-Cookie", f"{panel.cookie_name}={panel.cookie}; Path={panel.path}; HttpOnly; SameSite=Strict; Max-Age={PANEL_TTL_SECONDS}")
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("X-Frame-Options", "DENY")
             self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
@@ -357,10 +363,34 @@ def _handler(panel):
             origins = self.headers.get_all("Origin", [])
             if hosts != [panel.origin.removeprefix("http://")] or self.path != panel.path:
                 return False
-            return origins == [panel.origin] if post else origins in ([], [panel.origin])
+            if not post:
+                return origins in ([], [panel.origin])
+            fetch_site = self.headers.get_all("Sec-Fetch-Site", [])
+            if fetch_site not in ([], ["same-origin"]):
+                return False
+            cookies = SimpleCookie()
+            try:
+                cookie_headers = self.headers.get_all("Cookie", [])
+                if len(cookie_headers) != 1:
+                    return False
+                cookies.load(cookie_headers[0])
+                cookie = cookies.get(panel.cookie_name)
+                if not cookie or not secrets.compare_digest(cookie.value, panel.cookie):
+                    return False
+            except (CookieError, TypeError):
+                return False
+            if origins == [panel.origin]:
+                return True
+            # Older/privacy browsers may omit Origin. Accept only with an exact
+            # local referrer, the independent cookie and the body nonce below.
+            return (origins in ([], ["null"])
+                    and self.headers.get_all("Referer", []) == [panel.origin + panel.path])
 
         def active(self):
             return not panel.stop.is_set() and time.monotonic() < panel.deadline
+
+        def locale(self):
+            return "zh" if self.headers.get("Accept-Language", "en").lower().startswith("zh") else "en"
 
         def do_GET(self):
             if not self.allowed():
@@ -368,10 +398,11 @@ def _handler(panel):
             elif not self.active():
                 self.respond(410, "The connection panel expired. Return to your agent; the request is retained.")
             else:
-                self.respond(200, panel.page())
+                self.respond(200, panel.page(locale=self.locale()))
 
         def do_POST(self):
             if not self.allowed(post=True):
+                panel.rejected = True
                 self.respond(403, "Submit only from the protected local connection form.")
                 return
             if not self.active():
@@ -392,9 +423,12 @@ def _handler(panel):
                 if len(raw) != int(lengths[0]):
                     raise ValueError()
                 values = parse_qs(raw.decode("utf-8"), strict_parsing=True, keep_blank_values=True,
-                                  max_num_fields=4, encoding="utf-8", errors="strict")
+                                  max_num_fields=6, encoding="utf-8", errors="strict")
                 expected = {"nonce", "password", "username"} if panel.provider == "nomad" else {"nonce", "password"}
-                if set(values) != expected or any(len(value) != 1 for value in values.values()):
+                optional = {"remember", "http_consent"} if panel.provider == "legacy" else set()
+                if (not expected.issubset(values) or set(values) - expected - optional
+                        or any(len(value) != 1 for value in values.values())
+                        or any(values[k] != ["yes"] for k in optional if k in values)):
                     raise ValueError()
                 nonce = values["nonce"][0]
                 if not nonce.isascii() or not secrets.compare_digest(nonce, panel.nonce):
@@ -413,8 +447,13 @@ def _handler(panel):
                     with NomadClient() as connection:
                         session = connection.login(values["username"][0], values["password"][0])
                 else:
+                    if values.get("http_consent") != ["yes"]:
+                        self.respond(400, panel.page(error="consent", locale=self.locale()))
+                        return
+                    remembered = values.get("remember") == ["yes"]
                     session = {"provider": "legacy", "group": panel.group, "password": values["password"][0],
-                               "expires_at": time.time() + 3600, "insecure_http_approved": True}
+                               "expires_at": None if remembered else time.time() + 3600,
+                               "remembered": remembered, "insecure_http_approved": True}
                 # Disconnect and the active-check/save transition share a lock:
                 # either this save finishes before disconnect removes it, or a
                 # revoked panel can never write a session back afterwards.
@@ -422,13 +461,14 @@ def _handler(panel):
                     saved = self.active()
                     if saved:
                         save_session(panel.root, panel.provider, session, panel.group)
+                        panel.remembered = session.get("remembered", False)
                         panel.stop.set()
                 if saved:
-                    self.respond(200, panel.page(complete=True))
+                    self.respond(200, panel.page(complete=True, locale=self.locale()))
                 else:
                     self.respond(410, "The connection panel expired or was closed. Return to your agent; the request is retained.")
             except Exception:
-                self.respond(401, panel.page(error=True))
+                self.respond(401, panel.page(error=True, locale=self.locale()))
                 if panel.attempts >= 5:
                     panel.stop.set()
             finally:
@@ -437,21 +477,26 @@ def _handler(panel):
 
 
 def open_panel(root: Path, provider: str, group: str | None, request_id: str,
-               allow_insecure_http: bool = False) -> dict:
+               allow_insecure_http: bool = False, *, renew: bool = False) -> dict:
     """Start a finite loopback panel; the caller may offer its URL through its host."""
     identity = _identity(root, provider, group)
     if (not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id)):
         raise ValueError("NMR_AUTH_INVALID_REQUEST")
-    if provider == "legacy" and allow_insecure_http is not True:
-        raise ValueError("NMR_AUTH_HTTP_APPROVAL_REQUIRED")
+    if type(allow_insecure_http) is not bool or type(renew) is not bool:
+        raise ValueError("NMR_AUTH_INVALID_REQUEST")
     key = (*identity, request_id)
     with _LOCK:
         previous = _PANELS.get(key)
-        if previous is not None and not previous.stop.is_set() and time.monotonic() < previous.deadline:
-            return previous.receipt()
-        if len(_PANELS) >= MAX_PANELS:
+        if previous is not None:
+            if (not renew and not previous.rejected and not previous.stop.is_set()
+                    and time.monotonic() < previous.deadline):
+                return previous.receipt()
+            previous.stop.set()
+        active = sum(not p.stop.is_set() and time.monotonic() < p.deadline for p in _PANELS.values())
+        if active >= MAX_PANELS:
             raise ValueError("NMR_AUTH_PANEL_LIMIT")
         panel = _Panel(_root(root), provider, group, request_id)
+        panel.http_approved = allow_insecure_http
         try:
             server = _LocalServer(("127.0.0.1", 0), _handler(panel))
         except OSError:
