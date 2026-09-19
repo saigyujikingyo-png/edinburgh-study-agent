@@ -8,7 +8,7 @@ CAPABILITIES = {
         "Supported MyEd/EUCLID student pages",
         "Personal Timetabler published-activity export, academic year/semester filters, concise weekly patterns and dated cache",
         "Course timetable PDF week/day cells with cross-page continuation and checksum-bound extraction cache",
-        "One-call course material search, verified download and text reading; bounded folder traversal",
+        "One-call course material search, verified download and text reading; bounded folder traversal and resumable observed file-metadata update checks",
         "Loaded Learn activity updates and course inbox unread counters",
         "Structured official standard academic dates and Physics & Astronomy public events; explicit limited coverage",
         "Bounded official careers/events pages and MyCareerHub links",

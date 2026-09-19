@@ -10,6 +10,7 @@ from .contracts_common import (
     STR, BOOL, INT, NUM, ITEM, ARTIFACT, FILE_TEXT,
     obj, arr, nullable, enum,
 )
+from .school_errors import HOSTS, FAILURE_CODES
 
 
 NN = {**INT, "minimum": 0}
@@ -44,7 +45,7 @@ CONTINUATION = obj({
 PAGING = {
     "offset": NN, "returned_count": NN, "total_items": NN,
     "next_offset": nullable(NN), "has_more": BOOL, "response_truncated": BOOL,
-    "continuation_tool": enum("study_timetable", "study_materials", "study_messages"),
+    "continuation_tool": enum("study_timetable", "study_materials", "study_messages", "study_school_job"),
     "continuation": CONTINUATION, "legacy_catalog_compatible": BOOL,
 }
 FRESHNESS = {
@@ -251,9 +252,16 @@ PDF_TIMETABLE = paged({
     "coverage", "problems", "extraction_cache_hit", "verified", "remote_freshness_checked",
     "source_content_is_untrusted", "view", "detail_tool", "response_guidance"))
 
+FAILURE = obj({
+    "code":enum(*FAILURE_CODES),"stage":enum("learn","campus_sign_in"),
+    "target_host":enum(*HOSTS),"http_status":{**INT,"minimum":100,"maximum":599},
+    "authentication_required":BOOL,"automatic_retry":enum(False),
+    "recovery_action":enum("sign_in","check_connection","retry_once"),
+}, ("code","stage","automatic_retry","recovery_action"))
 COURSE_CHOICE = obj({
     "coverage": enum("partial"), "needs_course_selection": BOOL,
     "courses": arr(obj({"course": STR, "title": STR}, ("course", "title")), 20), "note": STR,
+    "remote_freshness_checked": enum(False),
 }, ("coverage", "needs_course_selection", "courses", "note"))
 MATERIAL_ROW = obj({
     "id": STR, "title": STR, "course_title": nullable(STR),
@@ -268,6 +276,30 @@ MATERIAL_LIST = paged({
     "note", "next_step", "response_guidance"))
 MATERIAL_FILE = obj({"content": FILE_TEXT, "remote_freshness_checked": BOOL, "cache_hit": BOOL},
                     ("content", "remote_freshness_checked"))
+
+MATERIAL_CHANGE = obj({
+    **MATERIAL_ROW["properties"], "change":enum("newly_observed","metadata_changed","baseline","comparison_unknown"),
+    "changed_fields":arr(enum("title","url","status","excerpt"),4),"previous_observed_at":STAMP,
+}, ("id","title","observed_at","change","changed_fields"))
+MATERIAL_CHECK = obj({
+    "course":STR,"title":STR,"checked":BOOL,"status":enum("checked","unavailable","interrupted"),
+    "observed_at":STAMP,"observed_resources":NN,"not_seen_in_scan":NN,
+    "remaining_collapsed":NN,"failed_folders":NN,"baseline_truncated":BOOL,
+}, ("course","title","checked","status"))
+MATERIAL_UPDATES = paged({
+    "operation":enum("updates"),"items":arr(MATERIAL_CHANGE,1500),
+    "counts":obj({key:NN for key in ("newly_observed","metadata_changed","baseline","unchanged_metadata","comparison_unknown")},
+                 ("newly_observed","metadata_changed","baseline","unchanged_metadata","comparison_unknown")),
+    "courses":arr(MATERIAL_CHECK,3),"observed_at":STAMP,"coverage":enum("partial"),
+    "live":BOOL,"remote_freshness_checked":BOOL,"content_change_checked":enum(False),
+    "course_offset":NN,"next_course_offset":nullable(NN),"has_more_courses":BOOL,
+    "total_courses":NN,"checked_courses":{**NN,"maximum":3},
+    "catalog_refreshed":BOOL,"catalog_truncated":BOOL,
+    "source_content_is_untrusted":enum(True),"note":STR,"next_step":STR,"response_guidance":STR,
+    "failure":FAILURE,"needs_login":BOOL,
+}, ("operation","items","counts","courses","observed_at","coverage","live","remote_freshness_checked",
+    "content_change_checked","course_offset","has_more_courses","total_courses","checked_courses",
+    "catalog_refreshed","catalog_truncated","source_content_is_untrusted","note","next_step","response_guidance"))
 
 ACTIVITY_ROW = obj({
     "id": STR, "title": STR, "url": STR, "course": STR, "course_url": nullable(STR),
@@ -328,7 +360,7 @@ JOB_RESULTS = {
     "read_resource": union(RESOURCE_FILE, RESOURCE_PAGE, COURSE_UNAVAILABLE),
     "results": union(RESULTS, PORTAL_FAILURE, UNAUTHENTICATED_RESULTS, COURSE_UNAVAILABLE),
     "timetable": union(PERSONAL_TIMETABLE, PDF_TIMETABLE, COURSE_UNAVAILABLE),
-    "materials": union(COURSE_CHOICE, MATERIAL_LIST, MATERIAL_FILE, RESOURCE_FILE,
+    "materials": union(COURSE_CHOICE, MATERIAL_LIST, MATERIAL_FILE, MATERIAL_UPDATES, RESOURCE_FILE,
                        RESOURCE_PAGE, DOWNLOAD_RESULT, COURSE_UNAVAILABLE),
     "messages": union(MESSAGES, MESSAGES_UNAVAILABLE, COURSE_UNAVAILABLE),
 }
@@ -354,6 +386,8 @@ JOB = obj({
     "source_content_is_untrusted": enum(True), "poll_after_seconds": {**NN, "maximum": 3},
     "browser_started": BOOL, "reused_cached_job": BOOL, "reused_active_job": BOOL,
     "reconciled_dead_worker": BOOL, "error_type": STR, "unchanged": BOOL,
+    "failure":FAILURE,"blocked_by_job_id":{"type":"string","pattern":"^[a-f0-9]{32}$","maxLength":32},
+    "retry_after_seconds":{**NN,"maximum":60},"reused_failed_job":BOOL,
 }, ("job_id", "state", "updated_at", "poll_after_seconds"))
 JOB["allOf"] = [{"anyOf": [{"required": ["action"]}, {"properties": {"unchanged": enum(True)}, "required": ["unchanged"]}]}]
 JOB["description"] = (

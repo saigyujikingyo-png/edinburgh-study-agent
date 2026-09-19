@@ -4,11 +4,11 @@
 
 Manage University of Edinburgh courses, materials and personal study workflows through your preferred AI agent. Independent open-source student project; not a University product.
 
-**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.3)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
+**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.4)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
 
 ## Install and start
 
-1. Download `UoE-Companion-0.8.3-Windows-x64.zip` and extract the entire ZIP.
+1. Download `UoE-Companion-0.8.4-Windows-x64.zip` and extract the entire ZIP.
 2. Double-click **Install.cmd**. In the local setup page, select WorkBuddy or Claude Desktop and choose **Install / update**. Python and plugin dependencies are included; no Git, terminal commands or development checkout are required for this route.
 3. Reload the selected agent's MCP connection. Sign in to the University in the dedicated window when needed; password and MFA stay on the school page.
 4. Ask, for example, "Show my classes this semester" or "Find this course's lecture notes and read the first file".
@@ -27,7 +27,7 @@ Google Chrome or Microsoft Edge must be installed. The wizard reuses existing pr
 | Personal timetable | Published personal Timetabler activities, year/semester/week/date filters and exact occurrence dates; incomplete exam/allocation coverage remains explicit |
 | Course timetable PDF | Verified download, labelled week/day extraction and cached summaries; request a particular week for full cells. Course grids do not prove personal group allocations or calendar dates |
 | Original file delivery | Export selected cached originals as file attachments or a ZIP with a manifest; validate size/SHA-256 before delivery. A destination upload is complete only after its own receipt and readback |
-| Course materials | Name/id resolution, bounded folder search, verified downloads and PDF/Office/text reading; ambiguous results return choices |
+| Course materials | Name/id resolution, bounded folder search, file-metadata update checks, verified downloads and PDF/Office/text reading; ambiguous results return choices |
 | Learn updates | Loaded activity rows and course unread counters; full conversation bodies and exhaustive history are not implemented |
 | Events and academic dates | Standard academic dates and Physics & Astronomy public events, plus bounded directory reads; not all University events or vacancies |
 | Personal organisation | Dated evidence, collections, tags, local tasks, agenda, study plans and local ICS import/export |
@@ -40,6 +40,8 @@ Normal campus reading/downloading uses the plugin's own session, structured DOM 
 Downloads stay on the campus computer. `study_export_files` transfers their verified original bytes through MCP so a capable host can create usable attachments; a local path or resource URI alone is not a cloud file reference. See [file delivery and cloud workflows](docs/FILE_DELIVERY.md). Each person installs independently and uses their own account; never share your private runtime/data directory or connection credentials.
 
 ## Efficiency and acceptance
+
+**0.8.4 improves Learn recovery and file-update checks.** Network and login failures return distinct recovery actions; repeated outage calls avoid starting more browsers. Ask for new course files to compare observed metadata in bounded batches. [Behavior, limits and evidence](docs/LEARN_RECOVERY.md).
 
 **0.8.3 repairs Windows remote-connector startup.** The 0.8.2 supervisor
 encoded its nested MCP command with Windows argument quoting; the connection
