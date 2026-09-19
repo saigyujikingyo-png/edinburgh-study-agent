@@ -44,3 +44,25 @@ Remove the UoE connection from the chosen host's normal MCP/plugin settings. For
 - University session expiry/MFA and provider changes can require user action.
 - Cloud Work depends on this computer being online. Downloads are local; host attachment delivery is separate.
 - A second student's own account and real 0.7.2 model conversations across all hosts have not been certified.
+
+
+### Connection launcher upgrades (next release candidate)
+
+The installer now generates the same release-owned launchers for the primary
+connection and declared accounts under `work/accounts`. It records their hashes
+and keeps a verified `lifecycle-backup-*` alongside the runtime backup in
+`installation.json`. An installation failure restores both layers. Custom or
+concurrently edited launchers are preserved and require review.
+
+Pause an older connection with its own Stop entrypoint before upgrading. An active
+connector or an enabled legacy startup task blocks replacement. Installation does
+not enable, disable or start tasks, change app/tunnel identities, or replace keys.
+After upgrading, explicitly enable the existing connection if persistent access is
+wanted. A manually stopped connection stays stopped.
+
+Support can restore the launcher backup with
+`work_profiles.restore_backup(home, backup)` after stopping the connection and
+alongside the matching runtime backup. It verifies hashes and refuses to overwrite
+subsequent edits. Do not roll back only the runtime and leave newer launchers.
+The operational boundaries and remaining acceptance are in
+[the lifecycle record](RUNTIME_LIFECYCLE.md).

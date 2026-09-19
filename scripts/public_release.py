@@ -21,7 +21,7 @@ SCRIPT_FILES = {
     "package_plugin.py", "public_release.py", "benchmark.py", "Connect-Work.ps1",
     "Enable-Work-Connection.ps1", "Run-Work-Connection.ps1",
     "Stop-Work-Connection.ps1", "setup_codex_cloud.sh",
-    "Install.cmd", "build_windows.py", "benchmark_student.py", "benchmark_contracts.py",
+    "Install.cmd", "build_windows.py", "benchmark_student.py", "benchmark_contracts.py", "verify_work_scheduler.py",
 }
 SOURCE_ROOTS = {".codex-plugin", ".github", "src", "scripts", "tests", "docs", "skills", "assets"}
 ICON_PNG_PROFILES = {

@@ -41,13 +41,19 @@ Downloads stay on the campus computer. `study_export_files` transfers their veri
 
 ## Efficiency and acceptance
 
+**0.8.2 is a lifecycle repair candidate, not an available release.** It adds
+account-scoped connection supervision, conservative orphan handling and
+transactional launcher upgrades. Review packages and synthetic Windows checks
+do not establish installed or host acceptance. The download above remains the
+released 0.8.1 preview. See [lifecycle evidence and open gates](docs/RUNTIME_LIFECYCLE.md).
+
 Version **0.8.1** fixes NMR connection setup: remember an encrypted teaching-group connection once on Windows, then query samples directly. Missing sample details stay in chat or a supported host form. The redesigned English/Chinese credential form fixes normal-browser POST rejection, and rejected forms can be renewed. NOMAD still has a separate, expiring account session; live NOMAD and individual host credential UX remain unverified. See [NMR usage and limits](docs/NMR.md) and [0.8.1 verification](docs/NMR_CONNECTION_ACCEPTANCE.md). Existing campus workflows and original-file export remain available. Daily/student/full catalogs retain 15/35/38 tools.
 
 Installation, tool/protocol checks, real campus reads and real agent/model conversations are separate evidence. This is a **student preview**, with installation and performance results in [INSTALL_PERFORMANCE.md](docs/INSTALL_PERFORMANCE.md). Earlier real Chat/Work and WorkBuddy evidence remains in [WORK_ACCEPTANCE.md](docs/WORK_ACCEPTANCE.md) and [WORKBUDDY_RESULTS.md](docs/WORKBUDDY_RESULTS.md). Those historical checks do not certify every current workflow or another person's account. See [0.7.1 contract coverage](docs/OUTPUT_CONTRACTS.md) and [reproducible protocol measurements](docs/CONTRACT_PERFORMANCE.md).
 
 ## Develop and build
 
-Shared rule **2026-09-14.1** is adopted. All 39 public tool identities across profiles declare output schemas, with the same server validation for direct and dispatched calls. Errors return bounded recovery and known saved identifiers; output-format failures never repeat a write. See the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md).
+Shared rule **2026-09-19.1** is adopted. All 39 public tool identities across profiles declare output schemas, with the same server validation for direct and dispatched calls. Errors return bounded recovery and known saved identifiers; output-format failures never repeat a write. See the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md).
 
 The source archive remains available for developers and non-Windows hosts. Windows is the live campus acceptance platform; macOS/Linux live campus operation is unverified.
 

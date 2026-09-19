@@ -1,6 +1,6 @@
 # UoE Companion contributor entrypoint
 
-Read DEVELOPMENT_PRINCIPLES.md (shared rule version 2026-09-14.1), CONTRIBUTING.md and CODEX_CLOUD.md before development. These are the shared Chembridge defaults plus this product's account, source and verification constraints. New user instructions take precedence.
+Read DEVELOPMENT_PRINCIPLES.md (shared rule version 2026-09-19.1), CONTRIBUTING.md and CODEX_CLOUD.md before development. These are the shared Chembridge defaults plus this product's account, source and verification constraints. New user instructions take precedence.
 
 Keep one product identity and shared core across ChatGPT Chat, local Work, cloud Work, Codex and other suitable agents. Codex is both a development tool and an end-user host. Use public English documentation, explicit open-source licensing, accessible installation, Terra max benchmarking and bounded resource and quota use. Target support is not acceptance evidence.
 
@@ -13,3 +13,9 @@ The shared umbrella entrypoint is https://github.com/saigyujikingyo-png/chembrid
 Cloud configuration, portable checks, native execution, model/host acceptance and artifact delivery are separate gates. The known OpenAI local Work project-sync frontend bug remains out of scope; do not repair application caches, registrations or internals for that issue.
 
 Every Chembridge plugin must implement and validate meaningful tool output schemas and structured results under DEVELOPMENT_PRINCIPLES.md section 12. Preserve media delivery and host compatibility, keep schemas compact, and record implementation/acceptance gaps separately.
+
+
+Read docs/RUNTIME_LIFECYCLE.md before changes to launchers, installers or connection recovery.
+Governance reviews cross-product lifecycle fixes before publication or installation.
+Rule adoption, source regression tests, installed runtime health, remote host calls
+and live campus authentication are independent evidence. Keep OS-event gaps open.
