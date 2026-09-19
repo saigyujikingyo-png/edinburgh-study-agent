@@ -347,3 +347,13 @@ def test_cleanup_commands_share_a_total_budget(profile):
     with pytest.raises(LifecycleError,match='COMMAND_TIMEOUT|CLEANUP_UNCONFIRMED|READINESS_TIMEOUT'):
         Supervisor(profile,b).stop()
     assert b.now<=45
+
+
+def test_failed_stop_invalidates_an_earlier_ready_receipt(profile):
+    b=Fake(profile);d=daemon(profile);b.rows=[d,child(profile,d)]
+    s=Supervisor(profile,b);s.connect()
+    def fail(*args,**kwargs):raise LifecycleError('CLEANUP_ACCESS_DENIED')
+    b.terminate=fail
+    with pytest.raises(LifecycleError,match='CLEANUP_ACCESS_DENIED'):s.stop()
+    receipt=json.loads(profile.state_path.read_text())
+    assert receipt['state']=='unknown' and receipt['ready'] is False

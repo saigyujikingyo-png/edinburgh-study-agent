@@ -152,13 +152,13 @@ def plan(home):
     canonical(accounts)
     if accounts.exists():
         directories.extend(sorted(p.parent for p in accounts.glob('*/connection.json')))
-    changes, scopes, tasks = [], set(), set()
+    changes, scopes, tasks, aliases = [], set(), set(), set()
     for directory in directories:
         value = inspect_profile(directory)
         scope = (value['alias'].casefold(), value['profile_directory'])
-        if scope in scopes or value['task_name'].casefold() in tasks:
+        if scope in scopes or value['task_name'].casefold() in tasks or value['alias'].casefold() in aliases:
             raise ValueError('Conflicting managed account scope')
-        scopes.add(scope); tasks.add(value['task_name'].casefold())
+        scopes.add(scope); tasks.add(value['task_name'].casefold()); aliases.add(value['alias'].casefold())
         changes.extend(profile_plan(directory))
     return changes
 

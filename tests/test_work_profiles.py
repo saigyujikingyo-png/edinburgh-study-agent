@@ -180,3 +180,15 @@ def test_explicit_prepare_cannot_replace_a_running_account_launcher(tmp_path,mon
         profiles.main(['prepare','--connection-directory',str(root),'--alias','edinburgh-study-agent',
            '--task-name','Synthetic task','--secret-file','secrets/keep.dpapi'])
     assert not (root/profiles.NAMES[0]).exists()
+
+
+def test_cli_alias_cannot_be_shared_by_two_different_profile_directories(tmp_path):
+    home=tmp_path/'home';primary=configured(home,declared=True)
+    other=configured(home,'other-account',declared=True)
+    config=json.loads((other/'connection.json').read_text())
+    declaration=json.loads((other/'lifecycle.json').read_text())
+    config['alias']=declaration['alias']='edinburgh-study-agent'
+    (other/'connection.json').write_text(json.dumps(config))
+    (other/'lifecycle.json').write_text(json.dumps(declaration))
+    with pytest.raises(ValueError,match='Conflicting managed account scope'):profiles.plan(home)
+    assert not (primary/profiles.NAMES[0]).exists()

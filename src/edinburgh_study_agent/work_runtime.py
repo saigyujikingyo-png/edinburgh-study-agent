@@ -442,7 +442,11 @@ class Supervisor:
                 raise LifecycleError('LOCAL_STATE_UNAVAILABLE') from None
 
     def stop(self):
-        self.cleanup()
+        try:
+            self.cleanup()
+        except LifecycleError as error:
+            self.receipt('unknown', error=error.code)
+            raise
         return self.receipt('stopped')
 
 
