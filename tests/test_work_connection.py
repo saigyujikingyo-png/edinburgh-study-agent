@@ -55,9 +55,9 @@ function Get-ScheduledTask { param($TaskName,$TaskPath,$ErrorAction) [pscustomob
 function Disable-ScheduledTask {param($TaskName,$TaskPath) $global:trace+='disable'}
 function Stop-ScheduledTask {param($TaskName,$TaskPath) $global:trace+='stop'}
 """
-        wrapped=pre+"try { "+script+" } catch { @{failed=$true;trace=$global:trace}|ConvertTo-Json -Compress }"
+        wrapped=pre+"try { $result=(& { "+script+" })|ConvertFrom-Json; $result|Add-Member trace $global:trace; $result|ConvertTo-Json -Depth 4 -Compress } catch { @{failed=$true;trace=$global:trace}|ConvertTo-Json -Compress }"
         return native_ps(wrapped,{**payload,'fixture':row,'foreignPrincipal':foreign=='principal'},timeout)
     backend.ps=fixture_ps
     result=backend.task('stop')
-    if foreign=='none':assert result['exists'] is True
+    if foreign=='none':assert result['exists'] is True and result['trace']==['disable']
     else:assert result['failed'] is True and result['trace']==[]

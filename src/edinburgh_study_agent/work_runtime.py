@@ -107,16 +107,23 @@ class Profile:
             elif values.get('home'):
                 executables.append(str(Path(values['home'])/'python.exe'))
         return (any(self.same_path(p.executable, exe) for exe in executables)
-                and argument(p.argv, '-m') == 'edinburgh_study_agent.server')
+                and p.argv[1:3] == ('-m', 'edinburgh_study_agent.server'))
 
     def child(self, p, parent):
         return p.parent == parent.pid and p.born >= parent.born and self.server(p)
 
     def supervisor(self, p):
         return (self.same_path(p.executable, self.python)
-                and argument(p.argv, '-m') == 'edinburgh_study_agent.work_runtime'
-                and 'run' in p.argv
+                and p.argv[1:4] == ('-m', 'edinburgh_study_agent.work_runtime', 'run')
                 and self.same_path(argument(p.argv, '--connection-directory'), self.directory))
+
+
+    def wrapper(self, p):
+        shell = Path(os.environ.get('SystemRoot', 'C:/Windows'))/'System32/WindowsPowerShell/v1.0/powershell.exe'
+        return (self.same_path(p.executable, shell) and len(p.argv) == 9
+                and tuple(a.casefold() for a in p.argv[1:8]) ==
+                    ('-noprofile','-noninteractive','-windowstyle','hidden','-executionpolicy','bypass','-file')
+                and self.same_path(p.argv[8], self.directory/'Run-Work-Connection.ps1'))
 
 
 def load_profile(directory):
@@ -247,9 +254,40 @@ class Supervisor:
         valid = {pid: old for pid, old in self.known.items() if current.get(pid) == old}
         return rows, daemons, valid
 
+    def external_frontend(self, process, rows):
+        """Exclusion requires a live, older parent chain, not absence of a receipt.
+
+        An ordinary host may own a frontend through a Python redirector. Traverse
+        those server nodes until the live non-transport parent is proved. Missing,
+        inaccessible or recycled parents remain unknown, including first startup
+        after a crash before any daemon/child receipt could be persisted.
+        """
+        current={p.pid:p for p in rows}
+        visited={process.pid}
+        for _ in range(8):
+            parent=current.get(process.parent)
+            if parent is None or parent.pid in visited or parent.born > process.born:
+                return False
+            visited.add(parent.pid)
+            if self.p.server(parent):
+                process=parent
+                continue
+            if self.p.wrapper(parent) or self.p.supervisor(parent):
+                return False
+            alias=argument(parent.argv,'--profile')
+            directory=argument(parent.argv,'--profile-dir')
+            if alias is not None or directory is not None or self.p.same_path(parent.executable,self.p.client):
+                return (alias is not None and alias != self.p.alias and directory is not None
+                        and not self.p.same_path(directory,self.p.profile_directory))
+            # Another incomplete UoE Python ownership chain is not host evidence.
+            if argument(parent.argv,'-m') in ('edinburgh_study_agent.server','edinburgh_study_agent.work_runtime'):
+                return False
+            return True
+        return False
+
     def unresolved_children(self, rows, proven):
-        return [p for p in rows if p.pid not in proven and any(
-            self.p.child(p, parent) for parent in self.known.values())]
+        return [p for p in rows if self.p.server(p) and p.pid not in proven
+                and not self.external_frontend(p, rows)]
 
     def child_chain(self, rows, owner, proven):
         if self.unresolved_children(rows, proven):
@@ -297,6 +335,8 @@ class Supervisor:
             self.daemon = owners[0]
         elif reported and any(p.pid == reported for p in rows):
             raise LifecycleError('OWNERSHIP_UNKNOWN')
+        if self.unresolved_children(rows, proven):
+            raise LifecycleError('ORPHAN_OWNERSHIP_UNKNOWN')
         chain = self.child_chain(rows, owners[0], proven) if owners else []
         return bool(data['process_running'] and data['healthy'] and data['ready'] and chain)
 
@@ -365,6 +405,8 @@ class Supervisor:
     def connect(self):
         deadline = self.b.monotonic() + self.readiness_seconds
         rows, owners, proven = self.snapshot(deadline)
+        if self.unresolved_children(rows, proven):
+            raise LifecycleError('ORPHAN_OWNERSHIP_UNKNOWN')
         if len(owners) > 1:
             raise LifecycleError('COMPETING_OWNERS')
         if owners:
@@ -622,7 +664,7 @@ class WindowsBackend:
         return self.ps("$identity=[Security.Principal.WindowsIdentity]::GetCurrent(); $task=Get-ScheduledTask -TaskPath '\\' -TaskName $request.name -ErrorAction SilentlyContinue; "
             "if($task){if(@($task.Actions).Count -ne 1 -or $task.Actions[0].Execute -ine $request.exe -or "
             "$task.Actions[0].Arguments -ine $request.arguments -or $task.Actions[0].WorkingDirectory -ine $request.directory -or $task.Principal.UserId -notin @($identity.Name,$identity.User.Value)){throw 'Task ownership conflict'}; "
-            "if($request.action -eq 'stop'){Disable-ScheduledTask -TaskPath '\\' -TaskName $request.name|Out-Null; Stop-ScheduledTask -TaskPath '\\' -TaskName $request.name}; "
+            "if($request.action -eq 'stop'){Disable-ScheduledTask -TaskPath '\\' -TaskName $request.name|Out-Null}; "
             "@{exists=$true;state=$task.State.ToString();enabled=[bool]$task.Settings.Enabled}|ConvertTo-Json -Compress}",
             {'name': self.p.task_name, 'action': action, 'exe': self.powershell,
              'arguments': self.task_arguments, 'directory': str(self.p.directory)})
@@ -647,13 +689,24 @@ class WindowsBackend:
 
 
 def stop_supervisor(profile, backend):
-    """Explicit Stop also owns a manual runner, fenced just like its daemon."""
-    owners=[p for p in backend.processes() if profile.supervisor(p)]
-    if len(owners)>1:
-        raise LifecycleError('COMPETING_SUPERVISORS')
-    for owner in owners:
-        # terminate holds a Windows handle and rechecks birth/executable/argv.
-        backend.terminate(owner)
+    """Disable scheduling separately, then terminate exact transport owners only.
+
+    Do not stop the Task Scheduler job/tree: detached school jobs may belong to
+    it. These native handles terminate individual processes, never descendants.
+    Killing a wrapper can race a last supervisor spawn, so inspect again before
+    entering the connector lock. Unknown/competing identities stop the sequence.
+    """
+    for _ in range(3):
+        rows=backend.processes()
+        wrappers=[p for p in rows if profile.wrapper(p)]
+        owners=[p for p in rows if profile.supervisor(p)]
+        if len(wrappers)>1 or len(owners)>1:
+            raise LifecycleError('COMPETING_SUPERVISORS')
+        if not wrappers and not owners:
+            return
+        for owner in wrappers + owners:
+            backend.terminate(owner)
+    raise LifecycleError('SUPERVISOR_STOP_UNCONFIRMED')
 
 
 def main(argv=None):

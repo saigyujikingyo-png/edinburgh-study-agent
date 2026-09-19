@@ -186,8 +186,9 @@ def test_retained_orphan_is_cleaned_but_reused_pid_is_not(profile):
 def test_child_birth_before_reused_parent_is_not_owned(profile):
     b = Fake(profile); d = daemon(profile, born='2026-01-02T00:00:00.0000000+00:00')
     c = child(profile,d); b.rows = [d,c]
-    Supervisor(profile,b).stop()
-    assert b.killed == [d.pid] and b.rows == [c]
+    with pytest.raises(LifecycleError,match='ORPHAN_OWNERSHIP_UNKNOWN'):
+        Supervisor(profile,b).stop()
+    assert not b.killed and b.rows == [d,c]
 
 
 def test_bounded_retry_reconciles_before_every_new_connect(profile):
@@ -277,9 +278,10 @@ def test_two_accounts_and_same_home_host_frontend_are_isolated(profile):
     alternate=replace(profile, alias='other-uoe', profile_directory=str(profile.directory/'other'))
     other=daemon(alternate,301); other_child=child(alternate,other,302)
     frontend=replace(child(profile,d,501),parent=500)
-    b.rows=[d,child(profile,d),other,other_child,frontend]
+    host=Process(500,1,str(profile.home/'host.exe'),'2025-01-01T00:00:00.0000000+00:00',('host.exe',))
+    b.rows=[d,child(profile,d),other,other_child,host,frontend]
     Supervisor(profile,b).stop()
-    assert b.rows==[other,other_child,frontend]
+    assert b.rows==[other,other_child,host,frontend]
 
 
 def test_linear_venv_redirector_chain_is_one_server_but_branch_is_rejected(profile):
@@ -357,3 +359,123 @@ def test_failed_stop_invalidates_an_earlier_ready_receipt(profile):
     with pytest.raises(LifecycleError,match='CLEANUP_ACCESS_DENIED'):s.stop()
     receipt=json.loads(profile.state_path.read_text())
     assert receipt['state']=='unknown' and receipt['ready'] is False
+
+
+def test_fresh_supervisor_without_receipt_preserves_unknown_orphan_and_does_not_connect(profile):
+    b=Fake(profile);orphan=child(profile,daemon(profile,404),405);b.rows=[orphan]
+    assert not profile.state_path.exists()
+    with pytest.raises(LifecycleError,match='ORPHAN_OWNERSHIP_UNKNOWN'):
+        Supervisor(profile,b).run(once=True)
+    assert count(b,'connect')==0 and b.rows==[orphan] and not b.killed
+
+
+def test_new_supervisor_after_crash_before_lineage_persistence_cannot_spawn_again(profile):
+    class ProcessCrash(BaseException): pass
+    b=Fake(profile);normal=b.client
+    def crash_after_spawn(args,timeout,**kw):
+        result=normal(args,timeout,**kw)
+        if args[1]=='connect':
+            b.rows=[p for p in b.rows if not profile.daemon(p)]
+            raise ProcessCrash()
+        return result
+    b.client=crash_after_spawn
+    with pytest.raises(ProcessCrash):Supervisor(profile,b).run(once=True)
+    assert json.loads(profile.state_path.read_text())['owned']==[]
+    orphan=b.rows[0];b.client=normal
+    with pytest.raises(LifecycleError,match='ORPHAN_OWNERSHIP_UNKNOWN'):
+        Supervisor(profile,b).run(once=True)
+    assert count(b,'connect')==1 and b.rows==[orphan] and not b.killed
+
+
+def test_fresh_supervisor_preserves_proven_live_host_frontend_chain(profile):
+    b=Fake(profile)
+    host=Process(500,1,str(profile.home/'host.exe'),'2025-01-01T00:00:00.0000000+00:00',('host.exe',))
+    shim=child(profile,host,501);server=child(profile,shim,502)
+    b.rows=[host,shim,server]
+    assert Supervisor(profile,b).run(once=True)['ready']
+    assert count(b,'connect')==1 and all(p in b.rows for p in (host,shim,server)) and not b.killed
+
+
+def test_recycled_host_parent_cannot_disguise_an_unknown_orphan(profile):
+    b=Fake(profile)
+    host=Process(500,1,str(profile.home/'host.exe'),'2027-01-01T00:00:00.0000000+00:00',('host.exe',))
+    orphan=child(profile,host,501);b.rows=[host,orphan]
+    with pytest.raises(LifecycleError,match='ORPHAN_OWNERSHIP_UNKNOWN'):
+        Supervisor(profile,b).run(once=True)
+    assert not b.killed and count(b,'connect')==0
+
+
+def test_native_task_wrapper_and_manual_owner_are_stopped_without_job_descendants(profile):
+    from edinburgh_study_agent.work_runtime import stop_supervisor
+    shell=str(Path(os.environ.get('SystemRoot','C:/Windows'))/'System32/WindowsPowerShell/v1.0/powershell.exe')
+    wrapper=Process(701,1,shell,'2025-01-01T00:00:00.0000000+00:00',
+      (shell,'-NoProfile','-NonInteractive','-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-File',str(profile.directory/'Run-Work-Connection.ps1')))
+    owner=Process(702,701,profile.python,'2026-01-01T00:00:00.0000000+00:00',
+      (profile.python,'-m','edinburgh_study_agent.work_runtime','run','--connection-directory',str(profile.directory)))
+    job=Process(703,702,profile.python,'2026-01-01T00:00:01.0000000+00:00',
+      (profile.python,'-m','edinburgh_study_agent.school','--job','synthetic-job'))
+    b=Fake(profile);b.rows=[wrapper,owner,job]
+    stop_supervisor(profile,b)
+    assert b.killed==[701,702] and b.rows==[job]
+
+
+@pytest.mark.skipif(os.name!='nt',reason='Real disposable Windows process tree')
+def test_handle_stop_of_real_wrapper_and_supervisor_preserves_detached_job(tmp_path):
+    from edinburgh_study_agent.work_runtime import stop_supervisor
+    base=str(Path(getattr(sys,'_base_executable',sys.executable)).resolve())
+    package=tmp_path/'edinburgh_study_agent';package.mkdir()
+    (package/'__init__.py').write_text('')
+    # Shadow the product ONLY inside the disposable subprocess working directory.
+    # These three tiny modules have no accounts, network, school data or services.
+    (package/'work_runtime.py').write_text(
+      "import json,os,pathlib,subprocess,sys,time\n"
+      "root=pathlib.Path(sys.argv[sys.argv.index('--connection-directory')+1])\n"
+      "job=subprocess.Popen([sys.executable,'-m','edinburgh_study_agent.school'],creationflags=subprocess.DETACHED_PROCESS|subprocess.CREATE_NO_WINDOW)\n"
+      "(root/'pids.json').write_text(json.dumps({'supervisor':os.getpid(),'job':job.pid}))\n"
+      "time.sleep(45)\n")
+    (package/'school.py').write_text(
+      "import pathlib,time\n"
+      "file=pathlib.Path(__file__).parent.parent/'job-heartbeat'\n"
+      "for i in range(450):\n file.write_text(str(i));time.sleep(.1)\n")
+    root=tmp_path/'work';root.mkdir()
+    p=Profile(root,tmp_path,'native-fixture',str(root/'profiles'),'unused.exe',base,
+              tmp_path/'unused.dpapi','No registered task')
+    b=WindowsBackend(p)
+    script=root/'Run-Work-Connection.ps1'
+    script.write_text("& '"+base.replace("'","''")+"' -m edinburgh_study_agent.work_runtime run --connection-directory '"+str(root).replace("'","''")+"'\nexit $LASTEXITCODE",encoding='utf-8-sig')
+    command=[b.powershell,'-NoProfile','-NonInteractive','-WindowStyle','Hidden','-ExecutionPolicy','Bypass','-File',str(script)]
+    wrapper=subprocess.Popen(command,cwd=tmp_path,env={**os.environ,'PYTHONPATH':str(tmp_path)},
+           stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,creationflags=0x08000000)
+    observed=[]
+    try:
+        deadline=time.monotonic()+12
+        pidfile=root/'pids.json'; heartbeat=tmp_path/'job-heartbeat'
+        while time.monotonic()<deadline and (not pidfile.exists() or not heartbeat.exists()):
+            assert wrapper.poll() is None,'Disposable supervisor failed to start'
+            time.sleep(.05)
+        assert pidfile.exists() and heartbeat.exists()
+        pids=json.loads(pidfile.read_text())
+        observed=[b.process(pid) for pid in (wrapper.pid,pids['supervisor'],pids['job'])]
+        assert all(observed)
+        assert p.wrapper(observed[0]) and p.supervisor(observed[1])
+        assert observed[2].argv[1:3]==('-m','edinburgh_study_agent.school')
+        before=heartbeat.stat().st_mtime_ns
+        stop_supervisor(p,b)
+        assert b.process(wrapper.pid) is None and b.process(pids['supervisor']) is None
+        assert b.process(pids['job'])==observed[2]
+        time.sleep(.15)
+        assert heartbeat.stat().st_mtime_ns>before
+    finally:
+        for process in reversed(observed):
+            if process is not None and b.process(process.pid)==process: b.terminate(process)
+        if wrapper.poll() is None: wrapper.kill()
+        wrapper.wait(timeout=3)
+
+
+def test_module_names_in_script_arguments_do_not_prove_process_ownership(profile):
+    server=child(profile,daemon(profile))
+    disguised=replace(server,argv=(profile.python,'-c','pass','-m','edinburgh_study_agent.server'))
+    assert not profile.server(disguised)
+    disguised=replace(server,argv=(profile.python,'-c','pass','-m','edinburgh_study_agent.work_runtime',
+                      'run','--connection-directory',str(profile.directory)))
+    assert not profile.supervisor(disguised)

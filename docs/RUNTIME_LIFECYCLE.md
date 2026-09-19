@@ -59,7 +59,11 @@ current health, campus authentication or host installation.
 - Registry stop failure does not skip exact-identity cleanup. Producers are
   quiesced before descendants, with new lineage observations at each boundary.
   A child first seen after its parent vanished has unproven ownership: cleanup
-  fails and reconnection is blocked. Other host frontends are preserved.
+  fails and reconnection is blocked. A fresh supervisor with no ownership receipt
+  also checks every same-runtime server before connect: missing, inaccessible or
+  recycled parent identities block startup. Other-host frontends are excluded only
+  through an observed live, older parent chain; their absence from this profile's
+  receipt is not proof that they are unrelated.
 - More than one daemon, two server branches, changed process identities or
   unknown orphans prevent readiness/retry. A linear redirector/server chain is
   accepted only for the base executable declared in the local venv configuration.
@@ -78,7 +82,7 @@ current health, campus authentication or host installation.
 | Network unavailable / restored | Bounded recovery; task may restart a failed runner up to three times one minute apart | Long outages can exhaust both budgets; explicit start or next logon is then required. Real network test pending |
 | Sleep / resume | Fresh health probe after execution resumes | Real resume test pending |
 | Logoff / shutdown | No continuous-execution promise; next authorised logon may start connector | Abrupt exit can retain a stale receipt. Do not interpret it as a current pass |
-| Explicit Stop | Disable only the matching startup task, stop the exact manual/scheduled supervisor, then reconcile its scope | Unknown owner or unreleased lock returns failure. Real installed Stop pending |
+| Explicit Stop | Disable only the matching startup task; terminate the exact wrapper/supervisor by individual native handles, then reconcile its scope. Never call Task Scheduler tree-stop | Unknown owner or unreleased lock returns failure. Real installed Stop pending |
 | Startup disabled | Upgrade does not enable or start it | Generator/installer fixture evidence; OS preference readback pending |
 | Upgrade / reinstall | Share scope locks; refuse active runtime or enabled legacy launcher; migrate all declared profiles transactionally | Synthetic two-account upgrade, repeat and rollback evidence |
 | Removal | Existing explicit Stop must precede removal; campus data is retained | Integrated uninstall wizard is not implemented |
@@ -98,16 +102,26 @@ rewritten by the launcher generator. Custom scripts require review.
 
 ## Verification and remaining gates
 
-The pre-fix regression reproduced the old Stop failure: registry stop returned
+The first pre-fix regression reproduced the old Stop failure: registry stop returned
 nonzero and neither proven-owned process was cleaned. The five previous script
 tests passed; the added regression failed. Those policy cases have moved to the
 shared-core tests; Windows launcher/task-adapter tests exercise the thin boundary.
+Governance subsequently reproduced an additional first-start orphan bug in the
+initial source candidate. New tests failed before its repair, then verified no
+new connect across a fresh supervisor with an empty or missing lineage receipt.
+The initial passing suite did not establish that untested recovery branch.
 
 The candidate tests cover startup before/after spawn, delayed readiness, malformed
 status, hard deadlines, registry failure, cleanup-time child birth, PID reuse,
-orphan preservation, duplicate owners/children, account isolation, independent
+orphan preservation including a brand-new supervisor after a pre-receipt crash,
+duplicate owners/children, account isolation, independently proved live
 frontends, locking, exact Windows process termination, synthetic DPAPI roundtrip,
 multi-account generation, custom/concurrent edits, repeat install and rollback.
+A real disposable Windows PowerShell/Python tree verified that individual-handle
+wrapper/supervisor termination preserved a detached synthetic job and its heartbeat.
+This was not a registered Task Scheduler job: installed scheduler descendant
+lifetime and job breakaway remain a separate OS acceptance gate. No real school
+job was used or stopped in this test.
 See the review receipt for the exact commit and current test totals.
 
 Separate current-device evidence for the **unchanged installed 0.8.1**: its two
