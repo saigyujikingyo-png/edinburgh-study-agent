@@ -240,7 +240,7 @@ def upgrade_guard(home):
             locks.enter_context(ownership_lock(profile))
             observed=activity(profile)
             if observed['running'] or observed['legacy_startup_enabled']:
-                raise ValueError('Pause this Work connection with its Stop entrypoint before upgrading; startup and accounts were preserved.')
+                raise ValueError('Pause this Work connection using the candidate migration guide before upgrading; do not use the old task tree-stop script. Startup and accounts were preserved.')
         yield
 
 

@@ -38,7 +38,7 @@ def test_shim_passes_exact_account_and_exit_status_without_another_backend(tmp_p
                                       '--connection-directory',str(root),'--connect-once']
 
 
-@pytest.mark.parametrize('foreign',['executable','arguments','directory','principal','none'])
+@pytest.mark.parametrize('foreign',['executable','arguments','directory','principal','short_principal','none'])
 def test_stop_task_adapter_checks_full_action_before_disabling(tmp_path,foreign):
     p=Profile(tmp_path,tmp_path,'fixture',str(tmp_path/'profiles'),'unused.exe','unused-python.exe',
               tmp_path/'secret.dpapi','Synthetic task')
@@ -51,13 +51,13 @@ def test_stop_task_adapter_checks_full_action_before_disabling(tmp_path,foreign)
     def fixture_ps(script,payload=None,timeout=10):
         pre="""
 $global:trace=@()
-function Get-ScheduledTask { param($TaskName,$TaskPath,$ErrorAction) [pscustomobject]@{Actions=@($request.fixture);State='Ready';Principal=@{UserId=$(if($request.foreignPrincipal){'unrelated-account'}else{[Security.Principal.WindowsIdentity]::GetCurrent().Name})}} }
+function Get-ScheduledTask { param($TaskName,$TaskPath,$ErrorAction) [pscustomobject]@{Actions=@($request.fixture);State='Ready';Principal=@{UserId=$(if($request.foreignPrincipal){'unrelated-account'}elseif($request.shortPrincipal){[Environment]::UserName}else{[Security.Principal.WindowsIdentity]::GetCurrent().Name})}} }
 function Disable-ScheduledTask {param($TaskName,$TaskPath) $global:trace+='disable'}
 function Stop-ScheduledTask {param($TaskName,$TaskPath) $global:trace+='stop'}
 """
         wrapped=pre+"try { $result=(& { "+script+" })|ConvertFrom-Json; $result|Add-Member trace $global:trace; $result|ConvertTo-Json -Depth 4 -Compress } catch { @{failed=$true;trace=$global:trace}|ConvertTo-Json -Compress }"
-        return native_ps(wrapped,{**payload,'fixture':row,'foreignPrincipal':foreign=='principal'},timeout)
+        return native_ps(wrapped,{**payload,'fixture':row,'foreignPrincipal':foreign=='principal','shortPrincipal':foreign=='short_principal'},timeout)
     backend.ps=fixture_ps
     result=backend.task('stop')
-    if foreign=='none':assert result['exists'] is True and result['trace']==['disable']
+    if foreign in ('none','short_principal'):assert result['exists'] is True and result['trace']==['disable']
     else:assert result['failed'] is True and result['trace']==[]

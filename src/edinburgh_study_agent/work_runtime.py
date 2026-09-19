@@ -662,8 +662,8 @@ class WindowsBackend:
 
     def task(self, action):
         return self.ps("$identity=[Security.Principal.WindowsIdentity]::GetCurrent(); $task=Get-ScheduledTask -TaskPath '\\' -TaskName $request.name -ErrorAction SilentlyContinue; "
-            "if($task){if(@($task.Actions).Count -ne 1 -or $task.Actions[0].Execute -ine $request.exe -or "
-            "$task.Actions[0].Arguments -ine $request.arguments -or $task.Actions[0].WorkingDirectory -ine $request.directory -or $task.Principal.UserId -notin @($identity.Name,$identity.User.Value)){throw 'Task ownership conflict'}; "
+            "if($task){$taskSid=$task.Principal.UserId; if($taskSid -ne $identity.User.Value){try{$taskSid=([Security.Principal.NTAccount]::new($task.Principal.UserId)).Translate([Security.Principal.SecurityIdentifier]).Value}catch{$taskSid=$null}}; if(@($task.Actions).Count -ne 1 -or $task.Actions[0].Execute -ine $request.exe -or "
+            "$task.Actions[0].Arguments -ine $request.arguments -or $task.Actions[0].WorkingDirectory -ine $request.directory -or $taskSid -ne $identity.User.Value){throw 'Task ownership conflict'}; "
             "if($request.action -eq 'stop'){Disable-ScheduledTask -TaskPath '\\' -TaskName $request.name|Out-Null}; "
             "@{exists=$true;state=$task.State.ToString();enabled=[bool]$task.Settings.Enabled}|ConvertTo-Json -Compress}",
             {'name': self.p.task_name, 'action': action, 'exe': self.powershell,
@@ -673,8 +673,8 @@ class WindowsBackend:
     def enable(self):
         # Explicit entrypoint only; installation/upgrade never calls this.
         return self.ps("$owner=[Security.Principal.WindowsIdentity]::GetCurrent(); $old=Get-ScheduledTask -TaskPath '\\' -TaskName $request.name -ErrorAction SilentlyContinue; "
-            "if($old -and (@($old.Actions).Count -ne 1 -or $old.Actions[0].Execute -ine $request.exe -or "
-            "$old.Actions[0].Arguments -ine $request.arguments -or $old.Actions[0].WorkingDirectory -ine $request.directory -or $old.Principal.UserId -notin @($owner.Name,$owner.User.Value))){throw 'Task ownership conflict'}; "
+            "$oldSid=$null; if($old){$oldSid=$old.Principal.UserId; if($oldSid -ne $owner.User.Value){try{$oldSid=([Security.Principal.NTAccount]::new($old.Principal.UserId)).Translate([Security.Principal.SecurityIdentifier]).Value}catch{$oldSid=$null}}}; if($old -and (@($old.Actions).Count -ne 1 -or $old.Actions[0].Execute -ine $request.exe -or "
+            "$old.Actions[0].Arguments -ine $request.arguments -or $old.Actions[0].WorkingDirectory -ine $request.directory -or $oldSid -ne $owner.User.Value)){throw 'Task ownership conflict'}; "
             "$identity=[Security.Principal.WindowsIdentity]::GetCurrent().Name; "
             "$action=New-ScheduledTaskAction -Execute $request.exe -Argument $request.arguments -WorkingDirectory $request.directory; "
             "$trigger=New-ScheduledTaskTrigger -AtLogOn -User $identity; "

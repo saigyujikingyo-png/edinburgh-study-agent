@@ -3,9 +3,10 @@
 Contract 1.0; shared rules **2026-09-19.1**, pinned to Chembridge
 [`922d950`](https://github.com/saigyujikingyo-png/chembridge/blob/922d95041b3b857f6ba11fbfb2817b18712ef605/RUNTIME_LIFECYCLE.md).
 Owner: UoE Product Max. Observation date: 19 September 2026.
-This is a **source candidate** on `codex/work-runtime-lifecycle`, based on
+This is a **0.8.2 source candidate** on `codex/work-runtime-lifecycle`, based on
 `a31f052aa8b1484d72b5d66a8456880ff184dbb1` (release 0.8.1). It is not installed
-or published. Governance review precedes either action.
+or released. Governance has allowed candidate packaging and a draft PR/CI;
+merge, release and installed migration require their own review.
 
 Adopting the shared rules does not establish runtime conformance or close
 [CB-2026-001](https://github.com/saigyujikingyo-png/chembridge/blob/922d95041b3b857f6ba11fbfb2817b18712ef605/governance/incidents/CB-2026-001.md).
@@ -89,9 +90,18 @@ current health, campus authentication or host installation.
 
 Task actions must match the expected executable, full arguments and working
 directory and current-user principal. Installation does not change task registrations or enabled preferences.
-Older launchers must first be paused through their existing Stop entrypoint;
-they do not understand the new cross-launcher lock. Do not manually restart an
-old launcher during an upgrade.
+For migration from 0.8.1, use the reviewed new controller from an isolated
+candidate package to pause the verified old wrapper and connector before replacing
+the runtime. The old Stop script uses Task Scheduler tree-stop and is unsuitable
+when detached work must be preserved. Do not manually restart an old launcher
+during an upgrade. Record and restore each task's original enabled/disabled state;
+installation itself never changes those preferences. Independently hosted stdio
+frontends must close gracefully before promotion; unknown or busy ownership stops
+the upgrade.
+
+Windows may store a task principal as a short username instead of its full name.
+The adapter resolves it to the current user's SID before accepting it; unresolved
+or foreign principals and mismatched actions remain ownership conflicts.
 
 Before updating, the installer saves readback-verified `lifecycle-backup-*`
 files and their hash manifest alongside `runtime-backup-*`; both locations are
@@ -119,10 +129,22 @@ frontends, locking, exact Windows process termination, synthetic DPAPI roundtrip
 multi-account generation, custom/concurrent edits, repeat install and rollback.
 A real disposable Windows PowerShell/Python tree verified that individual-handle
 wrapper/supervisor termination preserved a detached synthetic job and its heartbeat.
-This was not a registered Task Scheduler job: installed scheduler descendant
-lifetime and job breakaway remain a separate OS acceptance gate. No real school
-job was used or stopped in this test.
-See the review receipt for the exact commit and current test totals.
+A separate, explicitly invoked real Task Scheduler fixture then verified the
+same survival condition under a unique current-user, limited-privilege task with
+no automatic trigger. Its task was disabled, the exact wrapper/supervisor stopped,
+and the detached synthetic job retained both identity and a progressing heartbeat.
+The fixture processes and task were removed with readback. The initial attempt
+failed on Windows principal normalization; its failure receipt was retained,
+cleanup reconciled by SID, and the corrected adapter passed the later fixture.
+No real school job or existing account task was used or stopped. This does not
+prove the installed account upgrade, reboot, logoff or network behavior.
+
+`scripts/verify_work_scheduler.py --execute-synthetic-scheduler-test --receipt PATH`
+is a Windows-only opt-in acceptance helper, not a routine CI or installation step.
+It records the unique task name before registration, verifies fixture identities,
+and retains failed/uncertain evidence. An unverified process is never selected for
+cleanup just because its PID appears in the fixture file. See the private review
+receipt for exact source, package hashes and current test totals.
 
 Separate current-device evidence for the **unchanged installed 0.8.1**: its two
 existing private connectors were restored without changing identities. Governance
