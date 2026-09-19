@@ -96,18 +96,30 @@ def browser_page():
 
 def test_real_redirect_failure_reports_sso_host_without_sensitive_url(browser_page):
     from edinburgh_study_agent.school_errors import SchoolNetworkError
-    page = browser_page.new_page()
-    page.route("**/*", lambda route: route.fulfill(status=200, content_type="text/html", body=(
-        '<a href="/auth-saml/saml/login?SAMLRequest=PRIVATE_SENTINEL">Login to Learn</a>'))
-        if route.request.url == school.LEARN_HOME else
-        route.fulfill(status=302, headers={"location":"https://idp.ed.ac.uk/login?SAMLRequest=PRIVATE_SENTINEL"})
-        if "auth-saml" in route.request.url else route.abort("timedout"))
+    page = browser_page.new_page(offline=True)
+    intercepted = []
+    def route_request(route):
+        url = route.request.url
+        intercepted.append(url)
+        if url == school.LEARN_HOME:
+            route.fulfill(status=200, content_type="text/html", body=(
+                '<a href="/auth-saml/saml/login?SAMLRequest=PRIVATE_SENTINEL">Login to Learn</a>'))
+        elif "auth-saml" in url:
+            # A 302 follow-up can bypass Playwright's route handler. A script
+            # handoff creates a separately intercepted top-level navigation.
+            # Offline mode additionally prevents any real campus fallback.
+            route.fulfill(status=200, content_type="text/html", body=(
+                '<script>location.replace("https://idp.ed.ac.uk/login?SAMLRequest=PRIVATE_SENTINEL")</script>'))
+        else:
+            route.abort("timedout")
+    page.route("**/*", route_request)
     try:
         with pytest.raises(SchoolNetworkError) as caught:
             school.goto_learn(page)
         failure = caught.value.failure
         assert failure["code"] == "NETWORK_TIMEOUT"
         assert failure["stage"] == "campus_sign_in" and failure["target_host"] == "idp.ed.ac.uk"
+        assert any(url.startswith("https://idp.ed.ac.uk/") for url in intercepted)
         assert "PRIVATE_SENTINEL" not in json.dumps(failure)
         assert "SAMLRequest" not in json.dumps(failure)
     finally:
@@ -119,7 +131,7 @@ def test_real_redirect_failure_reports_sso_host_without_sensitive_url(browser_pa
     (503, school.SchoolNetworkError, "HTTP_ERROR"),
 ])
 def test_http_failure_is_not_a_twenty_second_content_wait(browser_page, status, expected, code):
-    page = browser_page.new_page()
+    page = browser_page.new_page(offline=True)
     page.route("**/*", lambda route: route.fulfill(status=status, body="Synthetic service response"))
     try:
         with pytest.raises(expected) as caught:
@@ -131,7 +143,7 @@ def test_http_failure_is_not_a_twenty_second_content_wait(browser_page, status, 
 
 
 def test_unrelated_iframe_failure_does_not_block_authenticated_content(browser_page):
-    page = browser_page.new_page()
+    page = browser_page.new_page(offline=True)
     page.route("**/*", lambda route: route.fulfill(status=200, content_type="text/html", body=(
         '<a id="course-link-_1_1">Synthetic course</a><iframe src="https://elsewhere.example/fail"></iframe>'))
         if route.request.url == school.LEARN_HOME else route.abort("connectionrefused"))
