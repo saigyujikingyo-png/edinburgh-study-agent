@@ -427,7 +427,9 @@ class Supervisor:
                 raise LifecycleError('READINESS_TIMEOUT')
             self.receipt('spawning')  # connect may create a daemon even if it fails.
             env = {'CONTROL_PLANE_API_KEY': self.b.secret(self.p.secret_file), 'PYTHONUTF8': '1'}
-            command = subprocess.list2cmdline([self.p.python, '-m', 'edinburgh_study_agent.server'])
+            # The client parses this nested string with its own escape grammar,
+            # including on Windows. CreateProcess/list2cmdline quoting is different.
+            command = '"' + self.p.python.replace('\\', '/') + '" -m edinburgh_study_agent.server'
             try:
                 result = self.b.client(['runtimes', 'connect', '--json', '--alias', self.p.alias,
                     '--profile', self.p.alias, '--profile-dir', self.p.profile_directory,
