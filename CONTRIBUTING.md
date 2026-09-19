@@ -18,7 +18,7 @@ Pull requests should describe the concrete behavior, relevant tests and remainin
 
 ## Output contracts
 
-Follow shared rule **2026-09-14.1** section 12 and the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md). Version 0.7.1 implements v1 output contracts in the shared registry; new or changed public tools and advanced operations must extend that implementation before their interfaces are considered complete.
+Follow shared rule **2026-09-19.1** section 12 and the [output-contract coverage ledger](docs/OUTPUT_CONTRACTS.md). Version 0.7.1 implements v1 output contracts in the shared registry; new or changed public tools and advanced operations must extend that implementation before their interfaces are considered complete.
 
 Preserve operation-shaped successful results and their field meanings. Add definitions in the shared record/school contract modules, declare an output schema, return matching `structuredContent` and JSON text, and validate at the server boundary. The `_contract` operation names the underlying tool even through `study_more`. Keep detailed advanced and school-job schemas discoverable on demand instead of expanding the default catalog into every payload variant.
 

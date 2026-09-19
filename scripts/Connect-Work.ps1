@@ -1,7 +1,10 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)][string]$TunnelId,
     [Parameter(Mandatory=$true)][string]$TunnelClient,
-    [string]$KeyEnvironmentVariable = 'EDINBURGH_TUNNEL_KEY'
+    [string]$KeyEnvironmentVariable = 'EDINBURGH_TUNNEL_KEY',
+    [ValidatePattern('^(primary|[a-z][a-z0-9-]{2,40})$')][string]$Account = 'primary',
+    [ValidatePattern('^[a-z][a-z0-9-]{2,63}$')][string]$Alias,
+    [string]$TaskName
 )
 $ErrorActionPreference = 'Stop'
 if ($TunnelId -notmatch '^tunnel_[a-f0-9]+$') { throw 'Use the real tunnel ID from OpenAI Platform.' }
@@ -12,7 +15,23 @@ $runtimePython = Join-Path $studyRoot 'runtime\Scripts\python.exe'
 if (-not (Test-Path -LiteralPath $runtimePython -PathType Leaf)) { throw 'Install the UoE Companion runtime first.' }
 $workRoot = Join-Path $studyRoot 'work'
 $secretRoot = Join-Path $studyRoot 'secrets'
-$secretFile = Join-Path $secretRoot 'work-tunnel-key.dpapi'
+$secretName = 'work-tunnel-key.dpapi'
+if ($Account -ne 'primary') {
+    $workRoot = Join-Path $workRoot ('accounts\'+$Account)
+    $secretName = 'work-'+$Account+'-key.dpapi'
+}
+if (-not $Alias) {
+    if ($Account -eq 'primary') { $Alias = 'edinburgh-study-agent' }
+    elseif ($Account -eq 'school-chatgpt') { $Alias = 'uoe-companion-school' }
+    else { $Alias = 'uoe-'+$Account }
+}
+if (-not $TaskName) {
+    if ($Account -eq 'primary') { $TaskName = 'Edinburgh Study Agent - Work connection' }
+    elseif ($Account -eq 'school-chatgpt') { $TaskName = 'UoE Companion - School account connection' }
+    else { $TaskName = 'UoE Companion - '+$Account+' connection' }
+}
+if ($TaskName.Length -gt 160 -or $TaskName -match '[\\/\x00-\x1f*?\[\]]') { throw 'Invalid account task name.' }
+$secretFile = Join-Path $secretRoot $secretName
 $keyText = [Environment]::GetEnvironmentVariable($KeyEnvironmentVariable, 'Process')
 if (-not $keyText -and -not (Test-Path -LiteralPath $secretFile -PathType Leaf)) {
     throw 'Provide your tunnel runtime key locally in the selected environment variable. Never put it in chat.'
@@ -21,9 +40,9 @@ New-Item -ItemType Directory -Path $workRoot,$secretRoot -Force | Out-Null
 $settingsPath = Join-Path $workRoot 'connection.json'
 if (Test-Path -LiteralPath $settingsPath) {
     $existing = Get-Content -LiteralPath $settingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($existing.tunnel_id -ne $TunnelId) { throw 'A different Edinburgh tunnel is configured. Review it before replacing its identity.' }
+    if ($existing.tunnel_id -ne $TunnelId -or $existing.alias -ne $Alias) { throw 'A different Edinburgh tunnel is configured. Review it before replacing its identity.' }
 }
-if ($keyText) {
+if ($keyText -and -not (Test-Path -LiteralPath $secretFile -PathType Leaf)) {
     if ($keyText.Trim() -notmatch '^sk-') { throw 'Expected an OpenAI tunnel runtime key.' }
     $secureKey = ConvertTo-SecureString $keyText.Trim() -AsPlainText -Force
     try {
@@ -48,15 +67,18 @@ if ($sourceClient -ne $localClient) {
     }
 }
 $settings = [ordered]@{
-    alias = 'edinburgh-study-agent'
+    alias = $Alias
     tunnel_id = $TunnelId
     client = $localClient
     python = $runtimePython
     module = 'edinburgh_study_agent.server'
     profile_directory = (Join-Path $workRoot 'profiles')
 }
-[IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
-foreach ($scriptName in @('Run-Work-Connection.ps1','Enable-Work-Connection.ps1','Stop-Work-Connection.ps1')) {
-    Copy-Item -LiteralPath (Join-Path $PSScriptRoot $scriptName) -Destination (Join-Path $workRoot $scriptName) -Force
+if (-not (Test-Path -LiteralPath $settingsPath -PathType Leaf)) {
+    [IO.File]::WriteAllText($settingsPath, ($settings | ConvertTo-Json), [Text.UTF8Encoding]::new($false))
 }
+# The installed release owns all profile launchers. Never hand-patch the school
+# account or rewrite its app, tunnel or credential identity during reconfiguration.
+& $runtimePython -m edinburgh_study_agent.work_profiles prepare --connection-directory $workRoot --alias $Alias --task-name $TaskName --secret-file ('secrets/'+$secretName)
+if ($LASTEXITCODE -ne 0) { throw 'The existing account was preserved; launcher preparation needs review.' }
 Write-Output 'Edinburgh private connection prepared. Start Run-Work-Connection.ps1 to connect, or enable its login task after authorizing persistent Work access.'

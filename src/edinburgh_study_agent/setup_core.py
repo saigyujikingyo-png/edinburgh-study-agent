@@ -153,11 +153,13 @@ def remove_owned_stage(path, home):
 def install(bundle, home, selected=(), *, config_paths=None, progress=lambda value: None,
             doctor=run_doctor):
     from .hosts import atomic_json, merge_config, server_config, generate
-    bundle, home = Path(bundle).resolve(), Path(home).resolve()
+    from . import work_profiles
+    from .work_runtime import canonical
+    bundle, home = Path(bundle).resolve(), Path(canonical(home))
     if home == Path.home().resolve() or home.parent == home or home.is_relative_to(bundle):
         raise ValueError("Choose a separate UoE private data directory.")
     home.mkdir(parents=True, exist_ok=True)
-    with installation_lock(home):
+    with installation_lock(home), work_profiles.upgrade_guard(home):
         progress("Checking package integrity")
         manifest = read_manifest(bundle)
         runtime = home / "runtime"
@@ -175,13 +177,18 @@ def install(bundle, home, selected=(), *, config_paths=None, progress=lambda val
         if same:
             same = all((home / name).is_file() and digest(home / name) == value
                        for name, value in manifest["files"].items())
-        if not same and runtime_processes(runtime):
+        launcher_changes = work_profiles.plan(home)
+        if (not same or launcher_changes) and runtime_processes(runtime):
             raise ValueError("UoE is in use. Finish school jobs, reload/close its MCP clients and pause the existing Work connection, then retry. Data and login are preserved.")
         stage = Path(tempfile.mkdtemp(prefix=".setup-stage-", dir=home))
         backup = None
         promoted = False
         applied = {}
+        launcher_applied = []
+        launcher_backup = None
         try:
+            if launcher_changes:
+                launcher_backup = work_profiles.save_backup(home, launcher_changes)
             if not same:
                 progress("Installing the bundled runtime")
                 for name in manifest["files"]:
@@ -192,6 +199,8 @@ def install(bundle, home, selected=(), *, config_paths=None, progress=lambda val
                 check = doctor(stage / "runtime/Scripts/python.exe", stage / "check-data")
                 if check.get("version") != manifest["version"]:
                     raise ValueError("Installed version did not match the package.")
+                if runtime_processes(runtime):
+                    raise ValueError("UoE became busy during installation; no runtime was replaced.")
                 if runtime.exists():
                     backup = home / ("runtime-backup-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
                     os.replace(runtime, backup)
@@ -200,6 +209,7 @@ def install(bundle, home, selected=(), *, config_paths=None, progress=lambda val
             else:
                 progress("This version is already installed; verifying connection")
                 check = doctor(runtime / "Scripts/python.exe", stage / "check-data")
+            launcher_applied = work_profiles.apply(launcher_changes)
             config = server_config(runtime / "Scripts/python.exe", home, profile="daily")
             receipts = []
             for host, path in targets.items():
@@ -220,12 +230,19 @@ def install(bundle, home, selected=(), *, config_paths=None, progress=lambda val
                        "bundle_sha256": digest(bundle / "manifest.json"), "home": str(home),
                        "python": str(runtime / "Scripts/python.exe"), "unchanged_runtime": same,
                        "runtime_backup": str(backup) if backup else prior_receipt.get("runtime_backup"),
+                       "launcher_backup": str(launcher_backup) if launcher_backup else prior_receipt.get("launcher_backup"),
+                       "launcher_files_updated": len(launcher_applied), "startup_preferences_changed": False,
                        "hosts": receipts, "connection_documents": str(connections), "check": check,
                        "campus_login_preserved": True, "host_model_roundtrip": "not_tested"}
             atomic_json(previous, receipt)
             progress("Installation complete. Reload your agent's MCP connection.")
             return receipt
         except Exception:
+            launcher_error = None
+            try:
+                work_profiles.rollback(launcher_applied)
+            except Exception as error:
+                launcher_error = error
             for path, after in applied.items():
                 if path.is_file() and path.read_bytes() == after:
                     if original[path] is None:
@@ -236,6 +253,8 @@ def install(bundle, home, selected=(), *, config_paths=None, progress=lambda val
                 os.replace(runtime, stage / "runtime")
             if backup is not None and backup.exists():
                 os.replace(backup, runtime)
+            if launcher_error is not None:
+                raise launcher_error
             raise
         finally:
             remove_owned_stage(stage, home)
