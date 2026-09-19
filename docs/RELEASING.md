@@ -1,21 +1,18 @@
 # Releasing
 
-## 0.8.2 lifecycle repair candidate
+## 0.8.3 command-encoding repair
 
-This candidate scopes private Work supervision to one account/profile owner,
-reconciles uncertain starts before retrying, preserves detached jobs during an
-explicit stop, and migrates launcher files together with the runtime. Public tool
-identities and version 1 output contracts remain unchanged. See
-[lifecycle evidence and open gates](RUNTIME_LIFECYCLE.md).
+This preview fixes the nested MCP command encoding used to start the Windows
+remote connector. It restores forward-slash paths and explicit quoting while
+preserving credentials, account identity, retries and ownership rules. See
+[repair evidence and overlay limits](WORK_COMMAND_REPAIR.md). The 0.8.2 lifecycle
+implementation record is historical and is not current installed acceptance.
 
-Governance has allowed versioning, local review packages and a draft PR with CI.
-This is not approval to merge, publish a release or install over existing accounts.
-The released student preview remains 0.8.1. Product version 0.8.2, shared rules
-2026-09-19.1 and output contract version 1 are separate.
-
-Historical workflow evidence remains in [NMR 0.8.1](NMR_CONNECTION_ACCEPTANCE.md),
-[file delivery 0.7.2](FILE_DELIVERY_ACCEPTANCE.md) and the
-[contract ledger](OUTPUT_CONTRACTS.md); it is not new installed acceptance.
+Publish source, wheel and Windows bundle from the same reviewed source. Record
+source tests, actual official-client parser/child-start checks, package integrity,
+installed identity and each remote account call separately. An exceptional one-file
+overlay on 0.8.2 must retain explicit base-plus-overlay provenance; it is not a full
+0.8.3 installation. Private maintenance receipts and helpers are never released.
 
 ## Candidate and release procedure
 
@@ -44,12 +41,12 @@ Build on Windows from the reviewed checkout:
 
 ```text
 python -m pip wheel --no-deps --wheel-dir dist .
-python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.8.2-py3-none-any.whl
+python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.8.3-py3-none-any.whl
 python scripts/package_plugin.py
 ```
 
-Expected review artifacts are `UoE-Companion-0.8.2-Windows-x64.zip`,
-`edinburgh-study-agent-0.8.2.zip`, their checksum sidecars, and the source wheel.
+Expected review artifacts are `UoE-Companion-0.8.3-Windows-x64.zip`,
+`edinburgh-study-agent-0.8.3.zip`, their checksum sidecars, and the source wheel.
 Candidate package names do not mean a public release exists. The bundled guide's
 versioned release link becomes available only after publication.
 

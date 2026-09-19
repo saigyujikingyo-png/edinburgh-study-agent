@@ -2,6 +2,7 @@
 from dataclasses import replace
 import json
 import os
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -87,6 +88,44 @@ class Fake:
 
 
 def count(b, action): return sum(a == action for a, _ in b.calls)
+
+
+
+@pytest.mark.parametrize('python_path', [
+    r'C:\UoE-fixture\Student\runtime\Scripts\python.exe',
+    r'C:\UoE-fixture\Student Name\runtime\Scripts\python.exe',
+    r"C:\UoE-fixture\O'Brien\runtime\Scripts\python.exe",
+    r'C:\UoE-fixture\学生 Élodie\runtime\Scripts\python.exe',
+    r'C:\UoE-fixture\A&B (lab)\runtime\Scripts\python.exe',
+    r'C:\UoE-fixture\$literal`name\runtime\Scripts\python.exe',
+    r'C:\UoE-fixture\a,b;group=one\runtime\Scripts\python.exe',
+    'C:/UoE-fixture/Student Name/runtime/Scripts/python.exe',
+])
+def test_connect_preserves_literal_path_in_nested_mcp_command(profile, python_path):
+    p = replace(profile, python=python_path)
+
+    class Capture(Fake):
+        def client(self, args, timeout, *, env=None):
+            if args[1] == 'connect':
+                self.connect_args = args[:]
+                self.runtime_key_reference = args[args.index('--runtime-api-key') + 1]
+            return super().client(args, timeout, env=env)
+
+    b = Capture(p)
+    assert Supervisor(p, b).run(once=True)['ready']
+    args = b.connect_args
+    command = args[args.index('--mcp-command') + 1]
+    # The client parses this nested value as quoted/escaped words on Windows too.
+    # This emitted subset also round-trips through the independent stdlib lexer;
+    # the opt-in official-client fixture covers its actual parser/stdio boundary.
+    assert shlex.split(command) == [python_path.replace('\\', '/'), '-m',
+                                    'edinburgh_study_agent.server']
+    assert command.startswith('"') and '\\' not in command
+    assert b.runtime_key_reference == 'env:CONTROL_PLANE_API_KEY'
+    assert 'sk-synthetic-only' not in ' '.join(args)
+    if os.name == 'nt':
+        # Outer CreateProcess quoting and the nested client grammar are separate.
+        assert WindowsBackend._argv(subprocess.list2cmdline(args)) == args
 
 
 def test_delayed_existing_owner_reuses_same_daemon(profile):

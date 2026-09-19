@@ -3,10 +3,14 @@
 Contract 1.0; shared rules **2026-09-19.1**, pinned to Chembridge
 [`922d950`](https://github.com/saigyujikingyo-png/chembridge/blob/922d95041b3b857f6ba11fbfb2817b18712ef605/RUNTIME_LIFECYCLE.md).
 Owner: UoE Product Max. Observation date: 19 September 2026.
-This is a **0.8.2 source candidate** on `codex/work-runtime-lifecycle`, based on
+Historical implementation record: this describes the **0.8.2 source candidate** on `codex/work-runtime-lifecycle`, based on
 `a31f052aa8b1484d72b5d66a8456880ff184dbb1` (release 0.8.1). It is not installed
-or released. Governance has allowed candidate packaging and a draft PR/CI;
+or released at the time of that record. Governance had allowed candidate packaging and a draft PR/CI;
 merge, release and installed migration require their own review.
+
+For the subsequently observed 0.8.2 Windows command-encoding defect and its
+0.8.3 correction, see [the repair record](WORK_COMMAND_REPAIR.md). The historical
+checks below are not a current installed-runtime certificate.
 
 Adopting the shared rules does not establish runtime conformance or close
 [CB-2026-001](https://github.com/saigyujikingyo-png/chembridge/blob/922d95041b3b857f6ba11fbfb2817b18712ef605/governance/incidents/CB-2026-001.md).
