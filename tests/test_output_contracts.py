@@ -41,6 +41,28 @@ def profiles(tmp_path, monkeypatch):
     return load, database
 
 
+@pytest.mark.parametrize("profile", ["full", "student", "daily"])
+def test_live_scope_choices_and_recovery_contracts_across_profiles(profiles, profile, monkeypatch):
+    from edinburgh_study_agent.school_errors import diagnostic
+    load, database = profiles
+    module = load(profile)
+    chosen = success(call(module,"study_materials",{"operation":"list","refresh":True}),"study_materials")
+    assert chosen["browser_started"] is False
+    assert chosen["result"]["needs_course_selection"] is True
+    assert chosen["result"]["remote_freshness_checked"] is False
+    stamp=now_utc().isoformat()
+    failed={"job_id":"a"*32,"action":"messages","state":"failed","updated_at":stamp,
+            "poll_after_seconds":0,"failure":diagnostic("NETWORK_TIMEOUT",host="idp.ed.ac.uk",stage="campus_sign_in")}
+    monkeypatch.setattr(school,"start_job",lambda *a,**k:failed)
+    value=success(call(module,"study_messages",{"refresh":True}),"study_messages")
+    assert value["failure"]["target_host"]=="idp.ed.ac.uk"
+    assert value["failure"]["recovery_action"]=="check_connection"
+    broken={**failed,"failure":{**failed["failure"],"target_host":"private-secret.example"}}
+    monkeypatch.setattr(school,"start_job",lambda *a,**k:broken)
+    rejected=failure(call(module,"study_messages",{"refresh":True}),"study_messages","OUTPUT_VALIDATION_ERROR")
+    assert "private-secret" not in json.dumps(rejected)
+
+
 def call(module, name, arguments=None):
     return asyncio.run(module.mcp.call_tool(name, arguments or {}))
 

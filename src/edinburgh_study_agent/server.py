@@ -404,6 +404,8 @@ def workflow_result(action,arguments):
     value=school.start_job(store(),action,arguments)
     if value["state"] not in school.TERMINAL:
         value=school.wait_job(store(),value["job_id"],20)
+    if action=="materials" and value.get("result",{}).get("operation")=="updates":
+        value=page_job(value,arguments.get("offset",0),arguments.get("limit",20))
     return result(value,"full")
 
 @mcp.tool(annotations=WEB, structured_output=False)
@@ -425,12 +427,16 @@ def study_timetable(academic_year: str = "current", semester: int | None = None,
 
 @mcp.tool(annotations=WEB, structured_output=False)
 def study_materials(course: str = "", query: str = "", item_id: str | None = None,
-                    operation: Literal["list","read","download"] = "list", refresh: bool = False,
-                    offset: int = 0, limit: int = 20, text_offset: int = 0) -> CallToolResult:
-    """Find course files/课件 by course name/id and file title, or read/download a known item_id in one call. Reuses dated cache and verified downloads; refresh checks school. For read, a unique match is required and PDF/Office text is returned directly. Page text with content.next_offset as text_offset; page list with next_offset as offset. Multiple course/file matches return choices, never guess. Limited live folder search stops after matching titles. No filesystem inspection, package installation or Save As. Use study_timetable(item_id=...) for PDF schedule tables. Waits 20s internally."""
+                    operation: Literal["list","read","download","updates"] = "list", refresh: bool = False,
+                    offset: Annotated[int, Field(ge=0, le=10000)] = 0,
+                    limit: Annotated[int, Field(ge=1, le=30)] = 20,
+                    text_offset: Annotated[int, Field(ge=0, le=2000000)] = 0,
+                    course_offset: Annotated[int, Field(ge=0, le=500)] = 0,
+                    max_courses: Annotated[int, Field(ge=1, le=3)] = 3) -> CallToolResult:
+    """Find course files/课件, read/download a unique item, or check new files with operation=updates. Updates checks one course or all observed courses (empty/all), up to 3 per batch; continue with next_course_offset. Compares metadata, not remote file bytes or upload dates. Page finished updates through study_school_job, without rescanning. List is cached by default; refresh needs a course. limit 1..30. Page lists with next_offset and text with content.next_offset as text_offset. Multiple matches return choices. No host filesystem, parser setup or Save As. PDF schedules use study_timetable(item_id=...). Waits 20s internally."""
     from . import materials
     args=dict(course=course,query=query,item_id=item_id,operation=operation,refresh=refresh,
-              offset=offset,limit=limit,text_offset=text_offset)
+              offset=offset,limit=limit,text_offset=text_offset,course_offset=course_offset,max_courses=max_courses)
     materials.validate(args)
     return workflow_result("materials",args)
 

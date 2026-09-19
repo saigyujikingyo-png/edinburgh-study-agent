@@ -60,7 +60,7 @@ Availability: F = full; S = student; D = direct daily tool; A = daily advanced o
 | `study_live_courses` | F / S / D | C, J, F | Course job and typed observations; malformed payload rejection preserves job identity without retry. |
 | `study_live_myed` | F / S / A | C, J | Portal lifecycle and page/link coverage; no fresh MyEd account access is claimed. |
 | `study_live_resources` | F / S / A | C, J | Course-resource rows and bounded traversal metadata; external/LTI and hidden resources remain gaps. |
-| `study_materials` | F / S / D | C, D, J | List/read/download, ambiguity choices, verified text and file metadata; live discovery/host delivery remain separate. |
+| `study_materials` | F / S / D | C, D, J | List/read/download/updates, scope choices, verified text, metadata deltas and resumable partial batches; live discovery/host delivery remain separate. |
 | `study_messages` | F / S / D | C, D, J | Activity/counter shapes, unknown versus zero and pagination; Learn conversation bodies remain unimplemented. |
 | `study_more` | D | C, D, X | List/describe/call contracts, operation identity and shared validation; not every advanced operation is invoked in the synthetic suite. |
 | `study_plan` | F / S / A | C, B | Draft allocations, minutes, conflicts and remaining effort; a plan is not a school booking or official requirement. |
@@ -155,3 +155,7 @@ Keep private account identities, app/tunnel ids, campus data and installation re
 - 2026-09-14: implemented v1 output contracts for the 0.7.1 student preview, shared direct/dispatch validation, structured errors, bounded data, cached validators and on-demand job schemas. Added focused synthetic/protocol coverage. Packaging, publication and account rollout require their own completion evidence.
 
 References: [shared rules](../DEVELOPMENT_PRINCIPLES.md#12-structured-tool-outputs-and-output-schemas), [verification](../VERIFICATION.md), [release gates](RELEASING.md), [host evidence](HOSTS.md).
+
+## 0.8.4 Learn recovery additions
+
+School job envelopes declare bounded `failure` diagnostics, outage retry timing and the originating failed job when a repeated live read is suppressed. Raw redirect/error details are excluded. The materials action adds an operation-shaped updates payload with dated per-course checks, metadata comparison counts, unknown comparison coverage and separate course/row pagination. Tests cover shared worker exceptions, full/student/daily recovery results, malformed diagnostic rejection, partial batch preservation and completed-job paging without another scan. Parameter bounds remain runtime-enforced and are described in the portable catalog. Live SSO and host/model acceptance remain separate.

@@ -52,6 +52,13 @@ def page_job(value,offset=0,limit=20):
         raise ValueError("offset 0..1000000; limit 1..100.")
     result=deepcopy(value)
     body=result.get("result",{})
+    if body.get("operation")=="updates":
+        rows=body["items"]
+        body["items"]=rows[offset:offset+limit]
+        body.update(offset=offset,returned_count=len(body["items"]),total_items=len(rows),
+                    next_offset=offset+limit if offset+limit<len(rows) else None,
+                    has_more=offset+limit<len(rows),continuation_tool="study_school_job")
+        return result
     if result.get("action") in {"timetable","materials","messages"} and "total_items" in body:
         body["continuation_tool"]={"timetable":"study_timetable","materials":"study_materials","messages":"study_messages"}[result["action"]]
         return result

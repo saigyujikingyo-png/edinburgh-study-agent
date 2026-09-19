@@ -23,26 +23,12 @@ from .models import now_utc, safe_url, Item, Observation, SOURCE_HOSTS
 from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, COURSE_SCAN, RESOURCE_LINKS, EXPANDERS,
                          COURSE_ID, course_items, resource_items, observation, learn_url)
 from .downloads import download_resource, list_downloads, safe_filename, verified_copy
+from .school_errors import (LoginRequired, CourseUnavailable, SchoolPageNotReady,
+                            SchoolNetworkError, BrowserBusy, NETWORK_CODES)
 
 ACTIONS = {"login", "courses", "resources", "download", "myed", "service", "read_resource", "results", "timetable", "materials", "messages"}
 TERMINAL = {"complete", "partial", "needs_login", "failed", "cancelled"}
 JOB_ID = re.compile(r"^[a-f0-9]{32}$")
-
-
-class LoginRequired(Exception):
-    pass
-
-
-class CourseUnavailable(Exception):
-    pass
-
-
-class SchoolPageNotReady(Exception):
-    pass
-
-
-class BrowserBusy(Exception):
-    pass
 
 
 def write_json(path: Path, value: dict):
@@ -119,6 +105,11 @@ def wait_job(store: Store,job_id: str,wait_seconds: float = 20,if_updated_at: st
 
 
 def cached_operation(store: Store,action: str,args: dict):
+    if action == "materials":
+        from .materials import scope_choice
+        choice = scope_choice(store, args)
+        if choice is not None:
+            return choice
     if args.get("refresh",action=="download"):
         return None
     if action in {"timetable","materials","messages"}:
@@ -166,6 +157,35 @@ def result_state(value):
     return "needs_login" if value.get("needs_login") else "partial" if value.get("failed") or value.get("coverage") in {"partial","entry_only","external_provider","unavailable"} else "complete"
 
 
+def recent_connection_failure(store: Store, action: str, arguments: dict):
+    """Share one short outage cooldown across Learn reads, never across services."""
+    if action not in {"courses", "resources", "materials", "messages", "download", "read_resource"}:
+        return None
+    root = school_root(store) / "jobs"
+    if not root.exists():
+        return None
+    for path in sorted(root.glob("*.json"), key=lambda p:p.stat().st_mtime, reverse=True)[:30]:
+        prior = json.loads(path.read_text(encoding="utf-8"))
+        failure = prior.get("failure", {})
+        if prior.get("blocked_by_job_id") or prior.get("state") not in {"failed","partial"} or failure.get("code") not in NETWORK_CODES:
+            continue
+        if failure["code"] == "HTTP_ERROR" and failure.get("http_status",0) < 500:
+            continue  # A single forbidden/missing course is not a service-wide outage.
+        age = (now_utc()-datetime.fromisoformat(prior["updated_at"])).total_seconds()
+        if not 0 <= age < 60:
+            continue
+        identity = json.dumps(["connection_backoff",prior["job_id"],action,arguments],sort_keys=True)
+        key = hashlib.sha256(identity.encode()).hexdigest()[:32]
+        stamp = now_utc().isoformat()
+        if not job_path(store,key).exists():
+            write_json(job_path(store,key),{
+                "job_id":key,"action":action,"state":"failed","created_at":stamp,"updated_at":stamp,
+                "progress":"A recent Learn connection failure is still in its short cooldown. Check the connection before retrying; cached files remain available.",
+                "failure":failure,"blocked_by_job_id":prior["job_id"],"browser_started":False})
+        return read_job(store,key) | {"retry_after_seconds":max(1,60-int(age)),"reused_failed_job":True}
+    return None
+
+
 def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
     if action not in ACTIONS:
         raise ValueError("Unsupported school action.")
@@ -183,6 +203,9 @@ def start_job(store: Store, action: str, arguments: dict | None = None) -> dict:
             "created_at":stamp,"updated_at":stamp,"progress":"Dated local result ready.",
             "result":cached,"browser_started":False})
         return read_job(store,key)
+    blocked = recent_connection_failure(store, action, arguments)
+    if blocked is not None:
+        return blocked
     active = session_status(store)["active_jobs"]
     if action in {"results","timetable","materials","messages"}:
         for prior in active:
@@ -317,9 +340,12 @@ def authenticated(page) -> bool:
 
 
 def ensure_learn(page):
+    from .school_navigation import observe
+    navigation = observe(page)
     deadline = time.monotonic() + 20
     followed_login = False
     while time.monotonic() < deadline:
+        navigation.check()
         if authenticated(page):
             return
         try:
@@ -329,7 +355,7 @@ def ensure_learn(page):
                     raise CourseUnavailable()
             from .portal import login_gate
             if login_gate(page):
-                raise LoginRequired()
+                raise LoginRequired(**navigation.context())
             # Learn can show its welcome page even while the campus SSO session is valid.
             # Follow the real same-origin login link once; never supply credentials.
             if not followed_login and urlsplit(page.url).hostname in LEARN_HOSTS:
@@ -341,17 +367,18 @@ def ensure_learn(page):
                     parsed = urlsplit(target)
                     if parsed.scheme == "https" and parsed.hostname in LEARN_HOSTS and not parsed.username:
                         followed_login = True
-                        page.goto(target,wait_until="domcontentloaded")
+                        navigation.navigate(target)
                         continue
             password = page.locator('input[type="password"]')
             if password.count() and password.first.is_visible():
-                raise LoginRequired()
-        except (LoginRequired,CourseUnavailable):
+                raise LoginRequired(**navigation.context())
+        except (LoginRequired,CourseUnavailable,SchoolNetworkError,SchoolPageNotReady):
             raise
         except Exception:
             pass
         time.sleep(0.4)
-    raise SchoolPageNotReady()
+    navigation.check()
+    raise SchoolPageNotReady(**navigation.context())
 
 
 def mark_session(store: Store, connected: bool):
@@ -361,12 +388,14 @@ def mark_session(store: Store, connected: bool):
 
 
 def goto_learn(page, url: str = LEARN_HOME):
+    from .school_navigation import observe
     learn_url(url)
-    page.goto(url,wait_until="domcontentloaded")
+    navigation = observe(page)
+    navigation.navigate(url)
     ensure_learn(page)
     # Campus SSO may return to Courses instead of retaining the requested deep link.
     if urlsplit(page.url).path != urlsplit(url).path:
-        page.goto(url,wait_until="domcontentloaded")
+        navigation.navigate(url)
         ensure_learn(page)
 
 
@@ -460,6 +489,7 @@ def open_course(store: Store, page, course: dict):
 
 
 def list_resources(store: Store, page, args: dict, progress) -> dict:
+    search_deadline=time.monotonic()+args.get("budget_seconds",600)
     course = resolve_course(store,args["course_id"])
     if course["status"] == "unavailable" and not args.get("probe_unavailable"):
         return {"live":False,"items":[],"coverage":"partial","warning":"Previously observed as unavailable. Refresh courses to verify its current status."}
@@ -467,7 +497,7 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
     max_folders = args.get("max_folders",80)
     if not 1 <= max_folders <= 150:
         raise ValueError("max_folders must be 1..150.")
-    deadline=time.monotonic()+30
+    deadline=min(time.monotonic()+30,search_deadline)
     previous,stable=None,0
     while time.monotonic()<deadline:
         content=page.evaluate(RESOURCE_LINKS)
@@ -480,7 +510,6 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
         time.sleep(0.5)
     expanded, failures = set(), []
     folder_context={}
-    search_deadline=time.monotonic()+args.get("budget_seconds",600)
     search_terms=[t.casefold() for t in args.get("search_terms",[]) if t]
     # A bounded fixed-point expansion visits nested modules as they become visible.
     for _ in range(max_folders):
@@ -660,11 +689,14 @@ def execute_job(store: Store, job_id: str):
                 invalidate_cache(store)
                 from .workflow_cache import invalidate
                 invalidate(store)
-                page.goto(LEARN_HOME,wait_until="domcontentloaded")
+                from .school_navigation import observe
+                navigation = observe(page)
+                navigation.navigate(LEARN_HOME)
                 progress("Complete the campus sign-in and MFA in the dedicated Chrome window. It closes after verification.",
                          "waiting_for_login")
                 deadline = time.monotonic() + 900
                 while time.monotonic() < deadline:
+                    navigation.check()
                     if not context.pages:
                         raise LoginRequired()
                     if any(authenticated(candidate) for candidate in context.pages if not candidate.is_closed()):
@@ -698,10 +730,15 @@ def execute_job(store: Store, job_id: str):
             record["timings_ms"]["read_complete"]=round((time.monotonic()-started)*1000)
         record["timings_ms"]["worker_total"]=round((time.monotonic()-started)*1000)
         record["result"] = result
+        if result.get("failure"):
+            record["failure"] = result["failure"]
+            if result.get("needs_login") and action in {"materials","messages"}:
+                mark_session(store,False)
         state = result_state(result)
         progress("School operation finished.",state)
-    except LoginRequired:
-        if record["action"] in {"login","courses","resources","download","read_resource"}:
+    except LoginRequired as error:
+        record["failure"] = error.failure
+        if record["action"] in {"login","courses","resources","download","read_resource","materials","messages"}:
             mark_session(store,False)
         progress("Campus sign-in is required in this plugin's dedicated local browser. Use study_connect_school.","needs_login")
     except CourseUnavailable:
@@ -709,8 +746,13 @@ def execute_job(store: Store, job_id: str):
             "warning":"The school says this course is currently unavailable. Its instructor controls access; this is not evidence of an expired campus login.",
             "next_step":"Use another accessible course/resource or wait for the instructor to open it. Do not repeat login or browser attempts for this closed course."}
         progress("The requested course is currently unavailable at Learn.","partial")
-    except SchoolPageNotReady:
-        progress("The school page did not load supported content in time. Retry once later; this alone does not mean campus login expired.","failed")
+    except SchoolNetworkError as error:
+        record["failure"] = error.failure
+        record["timings_ms"]["worker_total"] = round((time.monotonic()-started)*1000)
+        progress("The school connection failed while loading Learn or restoring campus sign-in. Check the reported host/network; keep saved login information. Retry once after connectivity returns. Do not request a new password or loop over other Learn tools.","failed")
+    except SchoolPageNotReady as error:
+        record["failure"] = error.failure
+        progress("The school page did not expose supported content. No network or login failure was confirmed. Retry once later; this alone does not mean campus login expired.","failed")
     except BrowserBusy:
         progress("The private browser is busy. Finish the existing login or job, then retry.","failed")
     except Exception as error:
