@@ -1,5 +1,10 @@
 # Releasing
 
+## 0.8.4 Learn recovery and file updates
+
+The current preview distinguishes campus network/login failures, preserves saved sessions during outages, shares worker exception identity and adds bounded metadata-change checks through `study_materials(operation="updates")`. See [behavior and verification boundaries](LEARN_RECOVERY.md). It includes the earlier 0.8.3 connection repair. Preserve any installed base-plus-overlay receipt during a full upgrade; never replay the old maintenance transaction.
+
+
 ## 0.8.3 command-encoding repair
 
 This preview fixes the nested MCP command encoding used to start the Windows
@@ -26,9 +31,11 @@ overlay on 0.8.2 must retain explicit base-plus-overlay provenance; it is not a 
 5. Build and inventory local source, wheel and Windows review packages from the same
    source. Verify ZIP integrity, source/module parity and SHA-256 sidecars. Do not
    upload old archives, installed runtimes or private acceptance receipts.
-6. Return source/CI/package evidence and a reversible account migration plan for the
+6. Record source/CI/package evidence and a reversible account migration plan for the
    installation gate. Preserve existing task preferences, credentials and jobs.
-7. Merge, tag and publish only after the applicable separate approval. Rebuild if
+   Product Max owns technical verification under the current user authorization;
+   the shared-principles task is not an external technical sign-off gate.
+7. Merge, tag and publish within the user's authorized release scope. Rebuild if
    reviewed source changes; release only packages tied to the passing source.
 
 The source archive includes the MIT license, notices and portable MCP template.
@@ -41,12 +48,12 @@ Build on Windows from the reviewed checkout:
 
 ```text
 python -m pip wheel --no-deps --wheel-dir dist .
-python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.8.3-py3-none-any.whl
+python scripts/build_windows.py --wheel dist/edinburgh_study_agent-0.8.4-py3-none-any.whl
 python scripts/package_plugin.py
 ```
 
-Expected review artifacts are `UoE-Companion-0.8.3-Windows-x64.zip`,
-`edinburgh-study-agent-0.8.3.zip`, their checksum sidecars, and the source wheel.
+Expected review artifacts are `UoE-Companion-0.8.4-Windows-x64.zip`,
+`edinburgh-study-agent-0.8.4.zip`, their checksum sidecars, and the source wheel.
 Candidate package names do not mean a public release exists. The bundled guide's
 versioned release link becomes available only after publication.
 

@@ -14,19 +14,40 @@ def terms(query):
 def matches(title,query):
     return not query or any(q.casefold() in title.casefold() for q in terms(query))
 def validate(args):
-    if args.get("operation","list") not in ("list","read","download"):
-        raise ValueError("operation must be list, read or download.")
+    if args.get("operation","list") not in ("list","read","download","updates"):
+        raise ValueError("operation must be list, read, download or updates.")
     if len(args.get("course",""))>300 or len(args.get("query",""))>300:
         raise ValueError("Course/query limited to 300 characters.")
     if not 1<=args.get("limit",20)<=30 or not 0<=args.get("offset",0)<=10000:
         raise ValueError("limit 1..30; offset 0..10000.")
     if not 0<=args.get("text_offset",0)<=2000000:raise ValueError("Invalid text offset.")
+    if not 0<=args.get("course_offset",0)<=500 or not 1<=args.get("max_courses",3)<=3:
+        raise ValueError("course_offset 0..500; max_courses 1..3.")
+    if args.get("operation")=="updates" and args.get("item_id"):
+        raise ValueError("For updates choose a course or all, not a file item_id.")
 
 def courses(store,query):
-    rows=store.list_items("course",limit=500)["items"]
+    rows=[i for i in store.list_items("course",limit=500)["items"] if i["source"]=="learn"]
     if not query:return []
     exact=[i for i in rows if query in (i["id"],i["native_id"]) or i["title"].casefold()==query.casefold()]
     return exact or [i for i in rows if query.casefold() in i["title"].casefold()]
+
+
+def scope_choice(store,args):
+    """Resolve missing live scope before acquiring a browser or bypassing cache."""
+    if args.get("operation")=="updates" and args.get("course") not in (None,"","all"):
+        selected=courses(store,args["course"])
+        if len(selected)!=1:
+            return dict(coverage="partial",needs_course_selection=True,remote_freshness_checked=False,
+                courses=[dict(course=i["native_id"],title=i["title"]) for i in selected[:20]],
+                note="Choose a matching Learn course or use course='all'. If the course is not indexed, refresh study_live_courses once. No browser was started.")
+    if args.get("item_id") or args.get("course") or not args.get("refresh") or args.get("operation","list") != "list":
+        return None
+    rows=[i for i in store.list_items("course",limit=500)["items"] if i["source"]=="learn"]
+    return dict(coverage="partial",needs_course_selection=True,
+        courses=[dict(course=i["native_id"],title=i["title"]) for i in rows[:20]],
+        remote_freshness_checked=False,
+        note="A list refresh needs a course name/id. To check new or changed files across observed courses use study_materials(operation='updates'). No browser was started and no cached files were relabelled as fresh.")
 
 def resource_matches(store,item,query):
     if matches(item["title"]+" "+item.get("excerpt",""),query):
@@ -62,6 +83,7 @@ def listing(rows,args,live=False):
     return result
 
 def cached(store,args):
+    if args.get("operation")=="updates":return None
     rows,choice=candidates(store,args)
     if choice:return choice if choice["courses"] else None
     if not rows:return None
@@ -88,6 +110,11 @@ def cached(store,args):
 
 def read(store,page,args,progress):
     from . import school
+    if args.get("operation")=="updates":
+        from .material_updates import read as read_updates
+        return read_updates(store,page,args,progress)
+    choice=scope_choice(store,args)
+    if choice is not None:return choice
     rows,choice=candidates(store,args)
     selected=courses(store,args.get("course",""))
     if choice and not selected:

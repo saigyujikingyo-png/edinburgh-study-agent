@@ -16,6 +16,9 @@ Every Chembridge plugin must implement and validate meaningful tool output schem
 
 
 Read docs/RUNTIME_LIFECYCLE.md before changes to launchers, installers or connection recovery.
-Governance reviews cross-product lifecycle fixes before publication or installation.
+The accountable Product Max owns source review, testing, installation and release
+verification. The shared-principles task no longer performs technical sign-off;
+see the 2026-09-19 boundary in Chembridge governance/OWNERSHIP.md. Preserve the
+existing lifecycle safety gates and unresolved transaction evidence.
 Rule adoption, source regression tests, installed runtime health, remote host calls
 and live campus authentication are independent evidence. Keep OS-event gaps open.
