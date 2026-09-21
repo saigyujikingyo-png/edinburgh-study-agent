@@ -113,3 +113,7 @@ workspace; passing the entire `BlobResourceContents` object is invalid. Other
 connectors need their own real file reference. A campus-machine path is still
 unreadable to a cloud host. Check destination duplicates and verify readback before
 marking migration complete. Report a rejected correct input as a host delivery gap.
+
+## Download outcomes (0.8.5)
+
+A container is a page: use the existing resource-reading operation, then choose an observed file. Honour UNSUPPORTED_CONTAINER, ATTACHMENT_AMBIGUOUS, ATTACHMENT_MISMATCH and PREVIEW_NOT_READY; do not repeat downloads or guess another preview. HTTP/network and verification/storage failures are distinct. Equal hashes prove equal bytes, not a correct resource label. Old NMR download records may use title_source=filename; that is a display title, not an invented course title. Older cached files without attachment_binding have not been re-bound by this update.

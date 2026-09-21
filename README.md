@@ -4,11 +4,11 @@
 
 Manage University of Edinburgh courses, materials and personal study workflows through your preferred AI agent. Independent open-source student project; not a University product.
 
-**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.4)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
+**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.5)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
 
 ## Install and start
 
-1. Download `UoE-Companion-0.8.4-Windows-x64.zip` and extract the entire ZIP.
+1. Download `UoE-Companion-0.8.5-Windows-x64.zip` and extract the entire ZIP.
 2. Double-click **Install.cmd**. In the local setup page, select WorkBuddy or Claude Desktop and choose **Install / update**. Python and plugin dependencies are included; no Git, terminal commands or development checkout are required for this route.
 3. Reload the selected agent's MCP connection. Sign in to the University in the dedicated window when needed; password and MFA stay on the school page.
 4. Ask, for example, "Show my classes this semester" or "Find this course's lecture notes and read the first file".
@@ -40,6 +40,8 @@ Normal campus reading/downloading uses the plugin's own session, structured DOM 
 Downloads stay on the campus computer. `study_export_files` transfers their verified original bytes through MCP so a capable host can create usable attachments; a local path or resource URI alone is not a cloud file reference. See [file delivery and cloud workflows](docs/FILE_DELIVERY.md). Each person installs independently and uses their own account; never share your private runtime/data directory or connection credentials.
 
 ## Efficiency and acceptance
+
+**0.8.5 checks attachment binding and fixes mixed Learn/NMR download lists.** Ambiguous or mismatched previews stop with a specific result; page-only entries are distinguished from failed transfers. Existing files and saved campus login are retained. [Scope and evidence](docs/DOWNLOAD_INTEGRITY.md).
 
 **0.8.4 improves Learn recovery and file-update checks.** Network and login failures return distinct recovery actions; repeated outage calls avoid starting more browsers. Ask for new course files to compare observed metadata in bounded batches. [Behavior, limits and evidence](docs/LEARN_RECOVERY.md).
 

@@ -217,3 +217,18 @@ def test_resume_download_accepts_observed_dataset_selection(env):
     assert choices["state"] == "needs_selection"
     done = validate(nmr.run(store, "resume", request_id=choices["request_id"], selection_id="Synthetic-0042"))
     assert done["state"] == "downloaded" and state["search_calls"] == 1
+
+
+def test_new_nmr_receipt_satisfies_shared_download_contract(env):
+    from edinburgh_study_agent.downloads import list_downloads
+    store, state = env
+    done = validate(nmr.run(store,"download",provider="nomad",sample="0042"))
+    assert done["state"] == "downloaded"
+    records = list_downloads(store)
+    assert records["files"][0]["title"] == records["files"][0]["filename"]
+    assert records["files"][0]["title_source"] == "filename"
+    contracts.validate_result("study_downloads",
+        {**records,"_contract":{"version":"1","operation":"study_downloads"}})
+    with store.connection() as db:
+        stored = json.loads(db.execute("SELECT payload FROM downloads").fetchone()[0])
+    assert stored["title"] == stored["filename"] and state["download_calls"] == 1

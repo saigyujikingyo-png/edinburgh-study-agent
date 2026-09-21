@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
 from .store import Store, identifier
+from .file_errors import FileDownloadError
 from .models import now_utc, safe_url, Item, Observation, SOURCE_HOSTS
 from .school_dom import (LEARN_HOME, LEARN_HOSTS, COURSE_CARDS, COURSE_SCAN, RESOURCE_LINKS, EXPANDERS,
                          COURSE_ID, course_items, resource_items, observation, learn_url)
@@ -575,35 +576,9 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
             "note":"Observed file, document and assessment links only. External/LTI tools and hidden or virtualised content can require additional adapters."}
 
 
-def original_file(page, item: dict) -> tuple[str,str | None]:
-    if not item.get("url"):
-        raise ValueError("Refresh this course's resource list first.")
-    goto_learn(page,learn_url(item["url"],item["course_id"]))
-    deadline = time.monotonic() + 25
-    while time.monotonic() < deadline:
-        for frame in page.frames:
-            try:
-                button = frame.get_by_role("button",name="Download",exact=True)
-                if button.count():
-                    original = button.first.evaluate("(b) => new URL(b.ownerDocument.URL).searchParams.get('originalUrl')")
-                    if original:
-                        filename=None
-                        candidates=[item["title"]]
-                        try:
-                            candidates.append(frame.frame_element().get_attribute("title") or "")
-                        except Exception:
-                            pass
-                        for candidate in candidates:
-                            try:
-                                filename=safe_filename(candidate)
-                                break
-                            except ValueError:
-                                continue
-                        return original,filename
-            except Exception:
-                continue
-        time.sleep(0.4)
-    raise ValueError("No supported original-file address was observed in the document preview.")
+def original_file(page, item: dict) -> tuple[str, str | None, dict]:
+    from .learn_files import resolve_original
+    return resolve_original(page, item, goto_learn)
 
 
 def download_items(store: Store, page, args: dict, progress) -> dict:
@@ -622,9 +597,9 @@ def download_items(store: Store, page, args: dict, progress) -> dict:
             if cached:
                 saved.append(cached)
                 continue
-            url,filename = original_file(page,item)
+            url,filename,binding = original_file(page,item)
             result = download_resource(store,item_id,url,filename,
-                                       bool(args.get("refresh",True)),100)
+                                       bool(args.get("refresh",True)),100,binding=binding)
             saved.append(result)
             url = None
         except LoginRequired:
@@ -632,10 +607,20 @@ def download_items(store: Store, page, args: dict, progress) -> dict:
             return {"saved":saved,"failed":failed,"needs_login":True,
                     "remaining_item_ids":ids[index-1:],"complete":False}
         except Exception as error:
-            # Never expose URLs from browser/HTTP exception strings.
+            if isinstance(error, FileDownloadError):
+                fields = error.fields()
+            elif isinstance(error, SchoolNetworkError):
+                fields = {"code": error.failure["code"], "error": str(error),
+                          "recovery_action": "check_connection", "automatic_retry": False}
+            elif isinstance(error, SchoolPageNotReady):
+                fields = FileDownloadError("PREVIEW_NOT_READY").fields()
+            else:
+                fields = FileDownloadError("DOWNLOAD_FAILED").fields()
             failed.append({"item_id":item_id,"title":item["title"],
-                           "error_type":type(error).__name__,
-                           "error":"No supported original file could be downloaded and verified."})
+                           "error_type":type(error).__name__, **fields})
+            if isinstance(error, SchoolNetworkError):
+                return {"saved":saved,"failed":failed,"complete":False,
+                        "remaining_item_ids":ids[index:]}
     return {"saved":saved,"failed":failed,"complete":not failed}
 
 
@@ -645,8 +630,8 @@ def read_resource(store: Store,page,args,progress):
         raise ValueError("Choose an observed Learn resource or assessment page.")
     if "/file/" in urlsplit(item.get("url") or "").path:
         from .file_text import read_file
-        url,filename=original_file(page,item)
-        saved=download_resource(store,item["id"],url,filename,args.get("refresh",False),100)
+        url,filename,binding=original_file(page,item)
+        saved=download_resource(store,item["id"],url,filename,args.get("refresh",False),100,binding=binding)
         return {"live":True,"download":saved,"content":read_file(store,item["id"],0,6000)}
     goto_learn(page,learn_url(item["url"],item["course_id"]))
     from .portal import wait_page
@@ -753,6 +738,10 @@ def execute_job(store: Store, job_id: str):
     except SchoolPageNotReady as error:
         record["failure"] = error.failure
         progress("The school page did not expose supported content. No network or login failure was confirmed. Retry once later; this alone does not mean campus login expired.","failed")
+    except FileDownloadError as error:
+        record["error_type"] = error.code
+        record["file_failure"] = error.fields()
+        progress(str(error), "failed")
     except BrowserBusy:
         progress("The private browser is busy. Finish the existing login or job, then retry.","failed")
     except Exception as error:

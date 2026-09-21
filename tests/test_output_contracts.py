@@ -615,3 +615,43 @@ def test_worker_launch_failure_returns_saved_failed_job_without_retry(profiles, 
     assert persisted["job_id"] == body["job_id"] and persisted["state"] == "failed"
     assert "PRIVATE_SENTINEL" not in path.read_text(encoding="utf-8")
     assert "PRIVATE_SENTINEL" not in json.dumps(body)
+
+
+@pytest.mark.parametrize("profile", ["full", "student", "daily"])
+def test_mixed_download_catalog_normalizes_legacy_nmr_without_rewriting(profiles, profile):
+    load, database = profiles
+    module = load(profile)
+    key = seed(database)["contract-file"]["id"]
+    saved, payload = download_fixture(database, key)
+    legacy = {k:v for k,v in saved.items() if k not in
+              {"title","reused","verified","signed_urls_stored","save_dialog_required"}}
+    legacy["item_id"] = "synthetic-nmr"
+    legacy["filename"] = "Synthetic-acquisition.zip"
+    raw = json.dumps(legacy)
+    with database.connection() as db:
+        db.execute("INSERT INTO downloads VALUES(?,?,?,?)",
+                   (legacy["item_id"],legacy["sha256"],legacy["downloaded_at"],raw))
+    if profile == "daily":
+        reply = call(module,"study_more",{"mode":"call","tool":"study_downloads","arguments":{}})
+    else:
+        reply = call(module,"study_downloads",{})
+    listed = success(reply,"study_downloads")
+    assert len(listed["files"]) == 2
+    fixed = next(r for r in listed["files"] if r["item_id"] == "synthetic-nmr")
+    assert fixed["title"] == legacy["filename"] and fixed["title_source"] == "filename"
+    with database.connection() as db:
+        assert db.execute("SELECT payload FROM downloads WHERE item_id=?",("synthetic-nmr",)).fetchone()[0] == raw
+    assert Path(saved["path"]).read_bytes() == payload
+
+
+def test_output_required_failure_names_schema_field_without_private_values(profiles, monkeypatch):
+    load, database = profiles
+    module = load()
+    key = seed(database)["contract-file"]["id"]
+    saved, _ = download_fixture(database,key)
+    bad = {**saved,"file_exists":True,"title":"PRIVATE_TITLE_SENTINEL"}
+    del bad["source_page_url"]
+    monkeypatch.setattr(module,"list_downloads",lambda *_: {"files":[bad],"signed_urls_stored":False})
+    result = failure(call(module,"study_downloads",{}),"study_downloads","OUTPUT_VALIDATION_ERROR")
+    assert "source_page_url" in result["error"]["message"]
+    assert "PRIVATE_TITLE_SENTINEL" not in json.dumps(result)

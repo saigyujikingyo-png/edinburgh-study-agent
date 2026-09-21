@@ -116,7 +116,8 @@ def _download(store, request, selected, max_megabytes, cancel_event=None):
         if destination.resolve() != destination: raise ValueError("NMR cache must not be redirected.")
         check_cancel(cancel_event)
         pending.replace(destination)
-        receipt = {"item_id": selected["id"], "path": str(destination), "filename": filename, "size_bytes": size,
+        receipt = {"item_id": selected["id"], "title": filename, "title_source": "filename",
+                   "path": str(destination), "filename": filename, "size_bytes": size,
                    "sha256": digest, "source_page_url": selected["source_page_url"], "downloaded_at": now_utc().isoformat()}
         from .hosts import atomic_json
         atomic_json(folder / "manifest.json", {"format_version": "1", "archive": receipt, "validation": manifest,
