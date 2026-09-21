@@ -105,6 +105,13 @@ ARTIFACT = obj({
     "path": {"type": "string", "minLength": 1, "maxLength": 32_768},
     "size_bytes": {"type": "integer", "minimum": 1, "description": "Saved byte count, not an estimate."},
     "sha256": SHA256, "source_page_url": STR, "downloaded_at": TIMESTAMP,
+    "title_source": enum("filename"),
+    "attachment_binding": obj({
+        "method": enum("unique_visible_preview"), "content_id": IDENTIFIER,
+        "content_path": {"type": "string", "pattern": r"^/ultra/courses/_\d+_\d+/file/_\d+_\d+$", "maxLength": 300},
+        "preview_filename": {"type": "string", "minLength": 1, "maxLength": 201},
+        "requested_filename": {"type": "string", "minLength": 1, "maxLength": 201},
+    }, ("method", "content_id", "content_path")),
     "file_exists": BOOL, "reused": BOOL, "verified": BOOL,
     "remote_freshness_checked": BOOL, "signed_urls_stored": enum(False),
     "save_dialog_required": enum(False),

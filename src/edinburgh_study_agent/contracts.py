@@ -150,7 +150,14 @@ def _job_validator(action):
 def _check(validator, value, prefix=()):
     error = next(validator.iter_errors(value), None)
     if error is not None:
-        raise OutputValidationError(f"Output field {_field((*prefix, *error.absolute_path))} violates {error.validator}.")
+        missing = ""
+        if error.validator == "required" and isinstance(error.instance, dict):
+            # Only names declared by this schema; never include a result value.
+            fields = [name for name in error.validator_value
+                      if name not in error.instance and name in error.schema.get("properties", {})]
+            if fields:
+                missing = " Missing fields: " + ", ".join(_field((name,)) for name in fields[:8]) + "."
+        raise OutputValidationError(f"Output field {_field((*prefix, *error.absolute_path))} violates {error.validator}." + missing)
 
 
 @lru_cache(maxsize=2)

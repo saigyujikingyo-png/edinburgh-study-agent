@@ -153,3 +153,5 @@ campus-machine path readable, and it does not justify inventing reference fields
 
 See [0.7.2 acceptance](FILE_DELIVERY_ACCEPTANCE.md) for the successful route,
 failed first attempts and measured limits.
+
+For Learn preview binding, page-only entries, typed failures and mixed Learn/NMR receipt compatibility, see [download integrity](DOWNLOAD_INTEGRITY.md). A valid file hash proves byte integrity; it does not independently prove that a course label selected the intended attachment.

@@ -13,6 +13,7 @@ import logging
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('httpcore').setLevel(logging.WARNING)
 from .models import now_utc
+from .file_errors import FileDownloadError
 
 ALLOWED_HOSTS = frozenset({"www.learn.ed.ac.uk", "learn.ed.ac.uk",
     "prod01-euc1-prod01-xythos.prod.files.blackboard.com"})
@@ -80,6 +81,11 @@ def list_downloads(store, item_id=None):
         rows = db.execute(query+" ORDER BY downloaded_at DESC",args).fetchall()
     files = [json.loads(r["payload"]) for r in rows]
     for entry in files:
+        # Older NMR receipts have no course title. A labelled filename fallback
+        # is presentation-only; never rewrite historical records to repair output.
+        if not entry.get("title") and isinstance(entry.get("filename"), str):
+            entry["title"] = entry["filename"]
+            entry["title_source"] = "filename"
         entry["file_exists"] = Path(entry["path"]).is_file()
     return {"files":files, "signed_urls_stored":False}
 
@@ -98,7 +104,7 @@ def verified_copy(store,item_id,max_megabytes=100,filename=None):
     return None
 
 
-def download_resource(store, item_id, download_url, filename, refresh=False, max_megabytes=100, client=None):
+def download_resource(store, item_id, download_url, filename, refresh=False, max_megabytes=100, client=None, binding=None):
     item = store.item(item_id)
     if item["kind"]!="resource":
         raise ValueError("Only an observed course resource can be downloaded.")
@@ -126,12 +132,26 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
                     url = validate_download_url(urljoin(url,location))
                     continue
                 if response.status_code!=200:
-                    raise ValueError(f"Download returned HTTP {response.status_code}; obtain a fresh address from the file page.")
-                if name is None:
+                    raise FileDownloadError("DOWNLOAD_HTTP_ERROR", http_status=response.status_code)
+                if name is None or binding:
                     from email.message import Message
                     header=Message()
                     header["Content-Disposition"]=response.headers.get("content-disposition","")
-                    name=safe_filename(header.get_filename() or "")
+                    header_name=header.get_filename()
+                    try:
+                        received_name=safe_filename(header_name) if header_name else None
+                        if received_name and binding and name and received_name.casefold() != name.casefold():
+                            raise FileDownloadError("ATTACHMENT_MISMATCH")
+                        name=received_name or name
+                        if name is None:
+                            raise FileDownloadError("UNSUPPORTED_FILE")
+                    except FileDownloadError:
+                        raise
+                    except ValueError as error:
+                        raise FileDownloadError("UNSUPPORTED_FILE", str(error)) from None
+                expected_name = (binding or {}).get("requested_filename")
+                if expected_name and name.casefold() != expected_name.casefold():
+                    raise FileDownloadError("ATTACHMENT_MISMATCH")
                 expected = response.headers.get("content-length")
                 if expected and int(expected)>max_megabytes*1024*1024:
                     raise ValueError("Course file exceeds the download size limit.")
@@ -143,8 +163,11 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
                             raise ValueError("Course file exceeds the download size limit.")
                         stream.write(block)
                 if expected and not response.headers.get("content-encoding") and size!=int(expected):
-                    raise ValueError("The file was incomplete; no partial file was retained.")
-                verify_file(temporary,Path(name).suffix.lower(),response.headers.get("content-type",""))
+                    raise FileDownloadError("FILE_VERIFICATION_FAILED", "The file was incomplete; no partial file was retained.")
+                try:
+                    verify_file(temporary,Path(name).suffix.lower(),response.headers.get("content-type",""))
+                except ValueError as error:
+                    raise FileDownloadError("FILE_VERIFICATION_FAILED", str(error)) from None
                 checksum = digest_file(temporary)
                 destination = folder/(checksum[:16]+"-"+name)
                 if destination.exists():
@@ -157,6 +180,8 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
                 record = {"item_id":item_id,"title":item["title"],"filename":name,"path":str(destination),
                     "size_bytes":size,"sha256":checksum,"source_page_url":source,
                     "downloaded_at":now_utc().isoformat()}
+                if binding:
+                    record["attachment_binding"] = binding
                 with store.connection() as db:
                     db.execute("INSERT OR REPLACE INTO downloads VALUES(?,?,?,?)",
                         (item_id,checksum,record["downloaded_at"],json.dumps(record,ensure_ascii=False)))
@@ -164,9 +189,9 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
                 return {**record,"reused":False,"verified":True,"signed_urls_stored":False,"save_dialog_required":False}
         raise ValueError("Download redirect limit reached.")
     except httpx.HTTPError:
-        raise ValueError("Course-file transfer failed; no partial file was retained. Refresh the source page and retry.") from None
+        raise FileDownloadError("DOWNLOAD_NETWORK_ERROR") from None
     except (zipfile.BadZipFile,OSError):
-        raise ValueError("The file could not be saved or verified; check local storage and retry.") from None
+        raise FileDownloadError("FILE_SAVE_FAILED") from None
     finally:
         if temporary.exists():
             temporary.unlink()

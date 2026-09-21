@@ -49,7 +49,7 @@ Availability: F = full; S = student; D = direct daily tool; A = daily advanced o
 | `study_deadlines` | F / S / A | C, B | Due dates, unknown dates, cached records and counts; no claim that absent cached assignments are absent at school. |
 | `study_download_files` | F / S / A | C, J | Per-file outcome, partial failure, remaining ids and verified metadata; real transfer and receipt remain separate. |
 | `study_download_resource` | F | C, B | Download identity, bytes, hash, source and freshness; current host download acceptance remains separate. |
-| `study_downloads` | F / S / A | C, D | Saved metadata checked against synthetic bytes/hash; host receipt is unverified by this check. |
+| `study_downloads` | F / S / A | C, D, X | Mixed Learn/NMR records, filename-sourced legacy titles without database rewrites, and daily dispatcher parity; host receipt remains separate. |
 | `study_events` | F / S / D | C, D | Date/null semantics and independent source failures; supported public sources do not mean all University events. |
 | `study_evidence` | F / S / A | C, B | Observation, optional item detail, bounded text and continuation; no private-source read in contract tests. |
 | `study_export_files` | F / S / D | C, D, F | Originals/ZIP as MCP binary resources, metadata-only mode, size/SHA-256, bounded batch and state-specific contracts. All three profiles and modes tested; see [delivery acceptance](FILE_DELIVERY.md). |
@@ -90,7 +90,7 @@ Every operation below is implemented using its direct v1 contract, with cached s
 | `study_collections` | Checked | Read and compare with direct call |
 | `study_deadlines` | Checked | Dedicated call not claimed |
 | `study_download_files` | Checked | Dedicated call not claimed |
-| `study_downloads` | Checked | Dedicated call not claimed |
+| `study_downloads` | Checked | Mixed Learn/NMR legacy receipt normalization and direct-result contract parity |
 | `study_evidence` | Checked | Dedicated call not claimed |
 | `study_export_files` | F / S / D | C, D, F | Originals/ZIP as MCP binary resources, metadata-only mode, size/SHA-256, bounded batch and state-specific contracts. All three profiles and modes tested; see [delivery acceptance](FILE_DELIVERY.md). |
 | `study_export_calendar` | Checked | Dedicated call not claimed |
@@ -159,3 +159,5 @@ References: [shared rules](../DEVELOPMENT_PRINCIPLES.md#12-structured-tool-outpu
 ## 0.8.4 Learn recovery additions
 
 School job envelopes declare bounded `failure` diagnostics, outage retry timing and the originating failed job when a repeated live read is suppressed. Raw redirect/error details are excluded. The materials action adds an operation-shaped updates payload with dated per-course checks, metadata comparison counts, unknown comparison coverage and separate course/row pagination. Tests cover shared worker exceptions, full/student/daily recovery results, malformed diagnostic rejection, partial batch preservation and completed-job paging without another scan. Parameter bounds remain runtime-enforced and are described in the portable catalog. Live SSO and host/model acceptance remain separate.
+
+Version 0.8.5 adds optional filename-title provenance, observed Learn preview binding, and typed per-file/worker failures. Focused regressions are documented in [download integrity](DOWNLOAD_INTEGRITY.md). Existing public result shapes and contract version 1 are retained; required-field diagnostics name schema fields without including private values.

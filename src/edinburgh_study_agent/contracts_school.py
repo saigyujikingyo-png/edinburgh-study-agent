@@ -10,7 +10,8 @@ from .contracts_common import (
     STR, BOOL, INT, NUM, ITEM, ARTIFACT, FILE_TEXT,
     obj, arr, nullable, enum,
 )
-from .school_errors import HOSTS, FAILURE_CODES
+from .school_errors import HOSTS, FAILURE_CODES, NETWORK_CODES
+from .file_errors import FILE_FAILURES
 
 
 NN = {**INT, "minimum": 0}
@@ -113,7 +114,13 @@ RESOURCE_LIST = paged({
     "observation_id": STR, "warning": STR, "note": STR,
 }, ("live", "items", "coverage"))
 
-DOWNLOAD_FAILURE = obj({"item_id": STR, "title": STR, "error_type": STR, "error": STR},
+FILE_FAILURE_FIELDS = {
+    "error": STR, "code": enum(*FILE_FAILURES, *NETWORK_CODES), "automatic_retry": enum(False),
+    "recovery_action": enum(*sorted({v[1] for v in FILE_FAILURES.values()})),
+    "http_status": {"type": "integer", "minimum": 100, "maximum": 599},
+    "candidates": arr({"type": "string", "maxLength": 201}, 5),
+}
+DOWNLOAD_FAILURE = obj({"item_id": STR, "title": STR, "error_type": STR, **FILE_FAILURE_FIELDS},
                        ("item_id", "error"))
 DOWNLOAD_RESULT = obj({
     **FRESHNESS, "saved": arr(ARTIFACT, 30), "failed": arr(DOWNLOAD_FAILURE, 30),
@@ -388,6 +395,7 @@ JOB = obj({
     "reconciled_dead_worker": BOOL, "error_type": STR, "unchanged": BOOL,
     "failure":FAILURE,"blocked_by_job_id":{"type":"string","pattern":"^[a-f0-9]{32}$","maxLength":32},
     "retry_after_seconds":{**NN,"maximum":60},"reused_failed_job":BOOL,
+    "file_failure": obj(FILE_FAILURE_FIELDS, ("error", "code", "automatic_retry", "recovery_action")),
 }, ("job_id", "state", "updated_at", "poll_after_seconds"))
 JOB["allOf"] = [{"anyOf": [{"required": ["action"]}, {"properties": {"unchanged": enum(True)}, "required": ["unchanged"]}]}]
 JOB["description"] = (
