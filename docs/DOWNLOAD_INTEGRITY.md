@@ -8,9 +8,9 @@ dependency, daemon, campus permission or automatic re-download.
 A direct Learn file must retain the requested course/content route after
 navigation. The resolver checks the entire iframe visibility chain, rejects
 multiple visible previews even when names match, and requires a stable unique
-preview. Recognisable filename labels, preview filenames and supplied HTTP
-attachment filenames must agree. A descriptive label is not used as a filename;
-the preview or response header supplies it.
+preview. Preview filenames and supplied HTTP attachment filenames must agree.
+The resource title is presentation metadata, even when it ends in a file
+extension; only the preview or response header supplies the saved filename.
 
 New Learn receipts retain a small attachment_binding object with the observed
 content path/id, selection method and available filename checks. Signed transfer
@@ -53,8 +53,9 @@ any re-download require their own scoped evidence and authorisation.
 
 ## Acceptance boundaries
 
-Focused offline checks cover hidden and same-name previews, route/filename
-mismatches, page-only entries, header disagreement, transfer versus verification
+Focused offline checks cover hidden and same-name previews, descriptive labels
+with file extensions, route mismatches, page-only entries, header disagreement,
+transfer versus verification
 failures, new NMR receipts and old mixed-catalog direct/dispatcher calls. All
 browser requests in these tests are fulfilled by synthetic fixtures.
 

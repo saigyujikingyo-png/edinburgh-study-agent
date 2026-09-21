@@ -149,9 +149,6 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
                         raise
                     except ValueError as error:
                         raise FileDownloadError("UNSUPPORTED_FILE", str(error)) from None
-                expected_name = (binding or {}).get("requested_filename")
-                if expected_name and name.casefold() != expected_name.casefold():
-                    raise FileDownloadError("ATTACHMENT_MISMATCH")
                 expected = response.headers.get("content-length")
                 if expected and int(expected)>max_megabytes*1024*1024:
                     raise ValueError("Course file exceeds the download size limit.")

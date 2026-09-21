@@ -110,7 +110,6 @@ ARTIFACT = obj({
         "method": enum("unique_visible_preview"), "content_id": IDENTIFIER,
         "content_path": {"type": "string", "pattern": r"^/ultra/courses/_\d+_\d+/file/_\d+_\d+$", "maxLength": 300},
         "preview_filename": {"type": "string", "minLength": 1, "maxLength": 201},
-        "requested_filename": {"type": "string", "minLength": 1, "maxLength": 201},
     }, ("method", "content_id", "content_path")),
     "file_exists": BOOL, "reused": BOOL, "verified": BOOL,
     "remote_freshness_checked": BOOL, "signed_urls_stored": enum(False),

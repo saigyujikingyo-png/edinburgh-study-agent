@@ -69,15 +69,9 @@ def test_same_name_visible_previews_are_ambiguous(page):
     assert not error.value.fields()["automatic_retry"]
 
 
-def test_wrong_visible_filename_is_not_saved_as_requested_label(page):
-    with pytest.raises(FileDownloadError) as error:
-        learn_files.resolve_original(page, ITEM, site(page, preview(name="Other.pdf")))
-    assert error.value.code == "ATTACHMENT_MISMATCH"
-    assert error.value.candidates == ["Other.pdf"]
-
-
-def test_descriptive_label_uses_preview_filename_not_label(page):
-    item = {**ITEM, "title":"Weekly reading"}
+@pytest.mark.parametrize("label", ["Weekly reading", "Weekly reading.pdf"])
+def test_descriptive_label_uses_preview_filename_not_label(page, label):
+    item = {**ITEM, "title":label}
     _, name, binding = learn_files.resolve_original(page, item, site(page, preview()))
     assert name == "Source.pdf" and "requested_filename" not in binding
 
@@ -132,18 +126,18 @@ def test_receipt_binds_source_and_never_persists_signed_address(resource):
     assert Path(record["path"]).exists()
 
 
-def test_header_filename_mismatch_does_not_promote_download(resource):
+def test_header_supplies_filename_without_preview_name(resource):
     store, key = resource
     binding = {"method":"unique_visible_preview", "content_id":"_2_1",
-               "content_path":urlsplit(PAGE).path, "requested_filename":"Source.pdf"}
+               "content_path":urlsplit(PAGE).path}
     def respond(_):
         return httpx.Response(200, content=b"%PDF-1.7\\nfixture",
                               headers={"Content-Disposition":'attachment; filename="Other.pdf"'})
     with httpx.Client(transport=httpx.MockTransport(respond)) as client:
-        with pytest.raises(FileDownloadError) as error:
-            download_resource(store, key, ORIGINAL, None, client=client, binding=binding)
-    assert error.value.code == "ATTACHMENT_MISMATCH"
-    assert not list_downloads(store)["files"]
+        record = download_resource(store, key, ORIGINAL, None, client=client, binding=binding)
+    assert record["filename"] == "Other.pdf" and record["title"] == "Source.pdf"
+    assert record["attachment_binding"] == binding
+    assert list_downloads(store)["files"][0]["filename"] == "Other.pdf"
 
 
 @pytest.mark.parametrize("case,code", [

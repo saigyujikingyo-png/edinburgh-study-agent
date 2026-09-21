@@ -38,7 +38,6 @@ def resolve_original(page, item, navigate):
     if match[2] != "file":
         raise FileDownloadError("UNSUPPORTED_CONTAINER")
     navigate(page, target)
-    expected_name = filename(item["title"])
     previous = None
     deadline = time.monotonic() + PREVIEW_TIMEOUT
     while time.monotonic() < deadline:
@@ -80,16 +79,12 @@ def resolve_original(page, item, navigate):
                                     candidates=[c[2] for c in candidates if c[2]])
         if candidates:
             frame, original, actual_name = candidates[0]
-            if actual_name and expected_name and actual_name.casefold() != expected_name.casefold():
-                raise FileDownloadError("ATTACHMENT_MISMATCH", candidates=[actual_name])
             fingerprint = (frame, original, actual_name)
             if fingerprint == previous:
                 binding = {"method": "unique_visible_preview", "content_id": match[3],
                            "content_path": path}
                 if actual_name:
                     binding["preview_filename"] = actual_name
-                if expected_name:
-                    binding["requested_filename"] = expected_name
                 # The preview or HTTP header supplies the filename, never the label.
                 return original, actual_name, binding
             previous = fingerprint
