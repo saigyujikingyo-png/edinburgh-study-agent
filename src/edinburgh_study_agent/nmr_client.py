@@ -133,15 +133,18 @@ class NomadClient:
         except (KeyError, TypeError, ValueError, UnicodeError):
             raise NmrError("UNEXPECTED_RESPONSE", "NOMAD login did not supply a valid bounded session.") from None
 
-    def search(self, sample: str, *, page=1, limit=10, start_date=None, end_date=None, shared=False):
+    def search(self, sample: str | None = None, *, page=1, limit=10, start_date=None, end_date=None, shared=False):
         self._headers()
-        sample = literal(sample)
+        sample = literal(sample) if sample is not None else None
+        if sample is None and shared:
+            raise ValueError("Recent dataset browsing is restricted to your own NOMAD account.")
         date_range(start_date, end_date)
         if isinstance(page, bool) or not isinstance(page, int) or not 1 <= page <= 100:
             raise ValueError("page must be 1..100.")
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 20:
             raise ValueError("limit must be 1..20.")
-        params = {"dataType": "auto", "title": re.escape(sample), "currentPage": page, "pageSize": limit}
+        params = {"dataType": "auto", "currentPage": page, "pageSize": limit}
+        if sample is not None: params["title"] = re.escape(sample)
         if not shared: params["userId"] = self.session["user_id"]
         if start_date or end_date:
             params["dateRange"] = (start_date or "1970-01-01") + "," + (end_date or datetime.now(timezone.utc).date().isoformat())
@@ -157,7 +160,7 @@ class NomadClient:
             if not shared and row["user"].get("id") != self.session["user_id"]:
                 raise NmrError("SCOPE_MISMATCH", "NOMAD returned data outside the requested personal scope; results were withheld.")
             title = str(row.get("title", ""))[:1000]
-            if sample.casefold() not in title.casefold():
+            if sample is not None and sample.casefold() not in title.casefold():
                 raise NmrError("FILTER_MISMATCH", "NOMAD did not preserve the requested literal sample filter.")
             dataset = literal(row.get("datasetName"), "dataset name", 200)
             if any(row.get(key) is not None and not isinstance(row[key], dict) for key in ("group", "instrument")):
@@ -168,7 +171,8 @@ class NomadClient:
                          "instrument": str((row.get("instrument") or {}).get("name", ""))[:128]})
         return {"datasets": rows, "page": page, "limit": limit, "total_datasets": value["total"],
                 "has_more": page * limit < value["total"], "adapter": "nomad_frontend_archive",
-                "coverage": "bounded_authenticated_sample_search"}
+                "coverage": "bounded_authenticated_sample_search" if sample is not None else "bounded_personal_archive",
+                "order": "last_archived_desc"}
 
     def experiments(self, dataset: str, *, shared=False):
         self._headers()

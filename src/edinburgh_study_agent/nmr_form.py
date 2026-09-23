@@ -15,6 +15,11 @@ COPY = {
         "unverified": "Archive access is not yet verified; the next query checks it.",
         "error": "Could not connect. Check your details or campus network and try again. Your request is retained.",
         "consent_error": "Select the HTTP permission to connect to this older archive.",
+        "authentication": "NOMAD rejected this sign-in. Check your NOMAD username and password. Your request is retained.",
+        "vpn_disconnected": "FortiClient VPN is disconnected. Off campus, connect to the University of Edinburgh VPN on this computer, then submit again. Your request is retained.",
+        "vpn_active_service_unreachable": "A FortiClient adapter is active, but NOMAD is unreachable. Check the university VPN connection or service, then submit again. Your request is retained.",
+        "network_unavailable": "NOMAD is unreachable. Off campus, connect FortiClient to the University of Edinburgh VPN on this computer. Your request is retained.",
+
         "where": "Use this form on the computer running UoE Companion.",
     },
     "zh": {
@@ -30,6 +35,11 @@ COPY = {
         "unverified": "档案访问尚未验证，将在下一次查询时检查。",
         "error": "连接未成功，请检查填写信息或校园网络后重试。请求已保留。",
         "consent_error": "连接旧档案需要勾选 HTTP 使用许可。",
+        "authentication": "NOMAD 拒绝了此次登录，请检查 NOMAD 用户名和密码。请求已保留。",
+        "vpn_disconnected": "FortiClient VPN 未连接。校外请在这台电脑上连接爱丁堡大学 VPN，再提交。请求已保留。",
+        "vpn_active_service_unreachable": "FortiClient 网卡已启用，但 NOMAD 仍不可达。请检查是否连接了学校 VPN，或确认服务状态，再提交。请求已保留。",
+        "network_unavailable": "目前无法访问 NOMAD。校外请在这台电脑上使用 FortiClient 连接爱丁堡大学 VPN。请求已保留。",
+
         "where": "请在运行 UoE Companion 的电脑上使用此表单。",
     },
 }
@@ -62,7 +72,8 @@ def render(panel, *, error=False, complete=False, locale="en", persistent=False)
         content += f'<h1>{c["title"]}</h1><p class="muted">{c["subtitle"]}</p>'
         content += f'<span class="badge">{c["group"]}: {escape(panel.group)}</span>' if legacy else '<span class="badge">NOMAD</span>'
         if error:
-            content += f'<div class="notice error" role="alert">{c["consent_error" if error == "consent" else "error"]}</div>'
+            key = "consent_error" if error == "consent" else error if isinstance(error, str) and error in c else "error"
+            content += f'<div class="notice error" role="alert">{c[key]}</div>'
         content += f'<form method="post" action="{panel.path}"><input type="hidden" name="nonce" value="{panel.nonce}">'
         if not legacy:
             content += f'<label class="field">{c["username"]}<input name="username" autocomplete="username" maxlength="128" required></label>'

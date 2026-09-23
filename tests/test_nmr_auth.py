@@ -387,3 +387,30 @@ def test_disconnect_is_atomic_with_panel_validation_and_save(tmp_path, monkeypat
         forgotten.result(timeout=3)
     assert not completed_before_save
     assert nmr_auth.get_session(tmp_path, "legacy", "3OR") is None
+
+
+@pytest.mark.parametrize("active,expected", [(False, "vpn_disconnected"), (True, "vpn_active_service_unreachable")])
+def test_nomad_login_network_failure_exposes_vpn_guidance_not_password_error(tmp_path, monkeypatch, active, expected):
+    from edinburgh_study_agent import nmr_network, nmr
+    from edinburgh_study_agent.nmr_client import NmrError
+    from edinburgh_study_agent.store import Store
+    from edinburgh_study_agent import contracts
+    class Unreachable:
+        def __enter__(self): return self
+        def __exit__(self, *_): pass
+        def login(self, *_): raise NmrError("NETWORK_UNAVAILABLE", PASSWORD)
+    monkeypatch.setattr(nmr_auth, "NomadClient", Unreachable)
+    monkeypatch.setattr(nmr_network, "vpn_adapter", lambda: {"detected": True, "active": active})
+    store = Store(tmp_path)
+    first = nmr.run(store, "list")
+    panel = first["connection"]
+    with client() as connection:
+        _, data = form(connection, panel)
+        response = post(connection, panel, {**data, "username": "synthetic", "password": PASSWORD})
+        assert response.status_code == 503
+        assert "FortiClient" in response.text and PASSWORD not in response.text
+    resumed = nmr.run(store, "connect", request_id=first["request_id"])
+    contracts.validate_result("study_nmr", {**resumed, "_contract": {"version": "1", "operation": "study_nmr"}})
+    assert resumed["network"]["state"] == expected
+    assert resumed["connection"]["url"] == panel["url"]
+    assert resumed["automatic_retry"] is False

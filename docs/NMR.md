@@ -19,6 +19,16 @@ The frontend dataset ID and v2 experiment ID have different meanings. The adapte
 
 Upstream protocol review used [nomad-server at aba97242af9273c614cb52fd882afb609bf3223f](https://github.com/nomad-nmr/nomad-server/tree/aba97242af9273c614cb52fd882afb609bf3223f). Its root licence is AGPL-3.0; no upstream implementation was copied into this MIT-licensed client.
 
+## Recent NOMAD data and campus VPN
+
+Use `study_nmr(action="list")` when you do not know the sample number. The default is your own NOMAD account, with ten datasets per page (maximum twenty), newest archived first. Optional `start_date` / `end_date` use the deployed archive's inclusive day-range filter. Results retain submission timestamps, observation time, page, limit, total datasets and explicit partial coverage. Do not present the first page as the full archive.
+
+Listing does not download even a single matching dataset automatically. Pass an observed `dataset_name` as `selection_id` with the same `request_id` to `resume` for experiment choices, or `download` for a unique experiment. Multiple experiments still require an explicit choice. Resuming after login retains the date range, page and page size. Historical teaching data is not silently searched or assumed migrated.
+
+Off campus, the runtime computer needs the University of Edinburgh network through **FortiClient VPN**. A browser login on another device does not provide that network route. Real NMR network/transfer failures trigger one bounded, read-only local adapter check. The reply distinguishes an inactive Fortinet adapter, an active adapter with an unreachable service, and an unknown VPN state. An active adapter alone does not prove the correct campus route. Saved login, request and selections are retained; connect/check the campus VPN, then resume the same request. No automatic VPN connection, credential reading, setting changes or blind retry occurs.
+
+Successful queries and cached reads do not launch the adapter check. On Windows it uses built-in PowerShell hidden with a four-second deadline and exposes only boolean adapter state. Other platforms or unavailable adapter information return an honest unknown with campus-access guidance. Protected login panels also distinguish a network failure from rejected credentials, in English and Chinese. Actual VPN on/off transitions are a separate acceptance gate; see [NOMAD verification](NOMAD_ACCEPTANCE.md).
+
 ## Ask, connect and resume
 
 Natural-language examples:
@@ -26,6 +36,7 @@ Natural-language examples:
 - “Find my NMR sample 0042 from the old teaching archive.”
 - “Download the experiment from 12 March, keeping the raw data.”
 - “Find my NOMAD sample and attach the original ZIP.”
+- “Show my NMR data from yesterday; I do not know the sample number.”
 
 `sample` is text; leading zeros are significant. `find` returns a saved `request_id`. If information is missing, the agent asks for only the listed non-secret fields and calls `resume` with the same ID. Hosts advertising MCP form elicitation may show these fields in their own small input form. No password or token can enter that form. A resumed download remains a download, including after dataset selection. Changing source, sample, group, archive or date invalidates the previous selection and query-only HTTP consent. A remembered connection reuses only its own group-scoped HTTP permission. If exactly one compatible connection is saved, its source/group is selected automatically; ambiguous connections are not tried in turn. The last 100 request contexts are retained privately.
 
@@ -73,4 +84,4 @@ Network transfers use bounded timeouts and streaming, with a 32 MiB default down
 
 ## Acceptance boundaries
 
-Source/protocol discovery, synthetic checks, actual archive retrieval, host credential UX, scientific processing and final attachment/storage delivery are distinct results. Current live NOMAD authentication and acquisition are **unverified** because the testing user does not yet have a NOMAD account. The old archive can be tested independently. See the version's verification record for actual test and acquisition evidence; neither a listed tool nor a configured host proves an end-to-end run.
+Source/protocol discovery, synthetic checks, actual archive retrieval, host credential UX, scientific processing and final attachment/storage delivery are distinct results. On 23 September 2026, one personal NOMAD account completed protected sign-in, bounded date-range discovery, exact experiment selection, a fresh validated ZIP transfer and cache reuse through the source candidate's actual daily stdio MCP boundary. See [0.8.6 NOMAD acceptance](NOMAD_ACCEPTANCE.md). This does not establish every account, instrument, remote host, token-renewal path or final attachment delivery. The old archive can be tested independently. See the version's verification record for actual test and acquisition evidence; neither a listed tool nor a configured host proves an end-to-end run.

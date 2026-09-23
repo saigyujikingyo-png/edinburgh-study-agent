@@ -63,7 +63,7 @@ def _record(store, request, data, subject):
 
 def _public(value):
     return {k: value[k] for k in ("id", "dataset_name", "experiment_number", "sample", "title", "acquired_on",
-                                  "parameter_set", "solvent", "instrument", "group", "observed_at") if value.get(k) is not None}
+                                  "parameter_set", "solvent", "instrument", "group", "submitted_at", "observed_at") if value.get(k) is not None}
 
 
 def _reply(request, state, message, **fields):
@@ -157,6 +157,10 @@ def _connect(store, request, *, renew=False):
     from .nmr_auth import open_panel
     panel = open_panel(store.root, request["provider"], request.get("group"), request["id"],
                        request["allow_insecure_http"], renew=renew)
+    if panel.get("network"):
+        return _reply(request, "authentication_pending", panel.pop("network_message"),
+                      connection={k: v for k, v in panel.items() if k not in ("network", "recovery_action", "automatic_retry")},
+                      network=panel["network"], recovery_action=panel["recovery_action"], automatic_retry=False)
     return _reply(request, "authentication_pending",
         "Offer this small plugin-owned form directly, using URL elicitation or a clickable link. "
         "Do not operate school/browser GUI, use screenshots or request passwords in chat. "
@@ -172,20 +176,25 @@ def _failure(store, request, exc):
         return _reply(request, "needs_auth", "The school rejected this connection; it has been cleared. "
                       "Use connect with this request_id for protected replacement, then resume. Do not retry the rejected credential.",
                       code=exc.code, needed=["connection"])
+    from .nmr_network import NETWORK_ERRORS, failure_guidance
+    if exc.code in NETWORK_ERRORS:
+        guidance = failure_guidance()
+        return _reply(request, "unavailable", guidance.pop("message"), code=exc.code, **guidance)
     return _reply(request, "unavailable", str(exc), code=exc.code)
 
 
 def run(store, action="status", *, provider="auto", sample=None, request_id=None, selection_id=None,
-        group=None, start_date=None, end_date=None, archive=None, page=1, limit=10,
+        group=None, start_date=None, end_date=None, archive=None, page=None, limit=None,
         allow_insecure_http=False, max_megabytes=32, cancel_event=None):
     from .nmr_auth import get_session, forget_session, open_panel
-    if action not in ("status", "find", "resume", "connect", "reconnect", "download", "forget"):
+    if action not in ("status", "list", "find", "resume", "connect", "reconnect", "download", "forget"):
         raise ValueError("Unknown NMR action.")
     if provider not in ("auto", "nomad", "legacy") or group not in (None, *GROUPS):
         raise ValueError("Choose NOMAD or the supported legacy teaching group.")
     if type(allow_insecure_http) is not bool: raise ValueError("HTTP consent must be an explicit boolean.")
     if type(max_megabytes) is not int or not 1 <= max_megabytes <= 128: raise ValueError("max_megabytes must be 1..128.")
-    if type(page) is not int or not 1 <= page <= 100 or type(limit) is not int or not 1 <= limit <= 20:
+    if ((page is not None and (type(page) is not int or not 1 <= page <= 100))
+            or (limit is not None and (type(limit) is not int or not 1 <= limit <= 20))):
         raise ValueError("page must be 1..100 and limit 1..20.")
     date_range(start_date, end_date)
     _tables(store)
@@ -194,7 +203,14 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
                 "message": "Reuse a saved NMR connection directly. Sample numbers can be supplied in chat or a supported host form. "
                 "connect is idempotent; reconnect replaces a failed panel; forget removes the saved connection. "
                 "Legacy remembered credentials include group-scoped HTTP consent. NOMAD uses its own expiring session."}
+    if action == "list":
+        if provider == "legacy" or group is not None:
+            raise ValueError("Recent-data listing is for NOMAD. Use find with a sample for the legacy archive.")
+        provider = "nomad"
     request = _request(store, request_id)
+    page = page if page is not None else request.get("page", 1)
+    limit = limit if limit is not None else request.get("limit", 10)
+    request.update(page=page, limit=limit)
     changes = {k: v for k, v in {"provider": provider if provider != "auto" else None,
         "sample": literal(sample) if sample is not None else None, "group": group,
         "start_date": start_date, "end_date": end_date, "archive": archive}.items() if v is not None}
@@ -211,7 +227,9 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
         elif len(available) == 1:
             request.update(provider=available[0]["provider"], group=available[0].get("group"))
     if request["provider"] == "nomad": request["group"] = None
-    if action in ("find", "download"):
+    if action == "list": request["browse"] = True
+    elif action == "find": request.pop("browse", None)
+    if action in ("list", "find", "download"):
         request["intent"] = action
     effective = request.get("intent", "find") if action == "resume" else action
     if request["archive"] not in ("archive", "backup"): raise ValueError("archive must be archive or backup.")
@@ -220,7 +238,9 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
     _save_request(store, request)
     needed = []
     if request["provider"] == "auto": needed.append("provider")
-    if action in ("find", "resume", "download") and not request["sample"]: needed.append("sample")
+    if (action in ("find", "resume", "download") and not request["sample"]
+            and not (request["provider"] == "nomad" and request.get("browse"))):
+        needed.append("sample")
     if request["provider"] == "legacy" and not request["group"]: needed.append("group")
     if needed:
         return _reply(request, "needs_input", "Ask only for the listed non-secret fields, then call resume with this request_id. Keep sample numbers as text including leading zeros; old data is not assumed migrated to NOMAD.", needed=needed)
@@ -272,6 +292,17 @@ def run(store, action="status", *, provider="auto", sample=None, request_id=None
                 else:
                     found = client.search(request["sample"], page=page, limit=limit, start_date=request["start_date"], end_date=request["end_date"])
                 datasets = found["datasets"]
+                if request.get("browse") and not selection_id:
+                    request["datasets"] = [r["dataset_name"] for r in datasets]
+                    request["candidates"] = []
+                    _save_request(store, request)
+                    return _reply(request, "needs_selection" if datasets else "no_matches",
+                        "Your own NOMAD datasets, newest archived first. Select an observed dataset_name with resume to see its experiments, or download to retrieve a unique experiment. Never download all matches automatically."
+                        if datasets else "No datasets were returned for this personal NOMAD page and date range; this is not a claim about other archives.",
+                        datasets=datasets, has_more=found["has_more"], page=page, limit=limit,
+                        total_datasets=found["total_datasets"], observed_at=now_utc().isoformat(),
+                        source_page_url=NOMAD_ORIGIN + "/", source_transport="https",
+                        coverage=found["coverage"], order=found["order"])
                 if len(datasets) > 1 or (len(datasets) == 1 and found["has_more"]):
                     # A dataset name is only accepted if it was observed in this exact query.
                     request["datasets"] = [r["dataset_name"] for r in datasets]

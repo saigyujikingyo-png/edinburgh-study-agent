@@ -34,7 +34,8 @@ def env(tmp_path, monkeypatch):
         def __exit__(self, *a): pass
         def search(self, sample, **kwargs):
             state["search_calls"] += 1
-            return {"datasets": [{"dataset_name": d, "title": "0042", "user": "synthetic", "group": "teaching", "instrument": "test"} for d in state["datasets"]], "has_more": False}
+            state["last_search"] = {"sample": sample, **kwargs}
+            return {"datasets": [{"dataset_name": d, "title": "0042", "user": "synthetic", "group": "teaching", "instrument": "test"} for d in state["datasets"]], "has_more": False, "total_datasets": len(state["datasets"]), "coverage": "bounded_personal_archive" if sample is None else "bounded_authenticated_sample_search", "order": "last_archived_desc"}
         def experiments(self, dataset):
             return [{"dataset_name": dataset, "experiment_number": "10", "experiment_id": dataset+"-10", "title": "0042"}]
         def download(self, ident, path, size, **kwargs):
@@ -232,3 +233,107 @@ def test_new_nmr_receipt_satisfies_shared_download_contract(env):
     with store.connection() as db:
         stored = json.loads(db.execute("SELECT payload FROM downloads").fetchone()[0])
     assert stored["title"] == stored["filename"] and state["download_calls"] == 1
+
+
+def test_nomad_list_does_not_need_sample_or_download(env):
+    store, state = env
+    result = validate(nmr.run(store, "list", start_date="2026-09-01", end_date="2026-09-01", limit=5))
+    assert result["provider"] == "nomad" and result["state"] == "needs_selection"
+    assert result["sample"] is None and result["total_datasets"] == 1
+    assert result["source_transport"] == "https" and result["order"] == "last_archived_desc"
+    assert state["download_calls"] == 0 and state["search_calls"] == 1
+    assert state["last_search"]["sample"] is None
+    assert result["coverage"] == "bounded_personal_archive"
+
+
+def test_list_then_selected_download_does_not_repeat_archive_search(env):
+    store, state = env
+    result = validate(nmr.run(store, "list"))
+    downloaded = validate(nmr.run(store, "download", request_id=result["request_id"],
+                                  selection_id=result["datasets"][0]["dataset_name"]))
+    assert downloaded["state"] == "downloaded"
+    assert state["search_calls"] == 1 and state["download_calls"] == 1
+    cached = validate(nmr.run(store, "download", request_id=result["request_id"]))
+    assert cached["cache_hit"] is True and state["download_calls"] == 1
+
+
+def test_list_without_selection_never_guesses_or_downloads_unique_dataset(env):
+    store, state = env
+    first = validate(nmr.run(store, "list"))
+    result = validate(nmr.run(store, "download", request_id=first["request_id"]))
+    assert result["state"] == "needs_selection" and state["download_calls"] == 0
+
+
+def test_list_retains_page_date_and_limit_across_authentication(env):
+    store, state = env
+    session = state["session"]
+    state["session"] = None
+    pending = validate(nmr.run(store, "list", page=3, limit=4, start_date="2026-09-01", end_date="2026-09-02"))
+    assert pending["state"] == "authentication_pending" and state["search_calls"] == 0
+    state["session"] = session
+    result = validate(nmr.run(store, "resume", request_id=pending["request_id"]))
+    assert result["state"] == "needs_selection" and result["page"] == 3 and result["limit"] == 4
+    assert state["last_search"] == {"sample": None, "page": 3, "limit": 4,
+                                    "start_date": "2026-09-01", "end_date": "2026-09-02"}
+
+
+def test_list_empty_page_reports_scope_without_inventing_missing_sample(env):
+    store, state = env
+    state["datasets"] = []
+    result = validate(nmr.run(store, "list"))
+    assert result["state"] == "no_matches" and result["datasets"] == [] and result["total_datasets"] == 0
+    assert "needed" not in result and state["download_calls"] == 0
+
+
+def test_list_cannot_download_an_unobserved_or_stale_dataset(env):
+    store, state = env
+    result = validate(nmr.run(store, "list"))
+    with pytest.raises(ValueError, match="returned for this NMR request"):
+        nmr.run(store, "download", request_id=result["request_id"], selection_id="not-observed")
+    with pytest.raises(ValueError, match="returned for this NMR request"):
+        nmr.run(store, "download", request_id=result["request_id"], selection_id="Synthetic-0042",
+                start_date="2026-09-02")
+    assert state["download_calls"] == 0
+
+
+def test_legacy_does_not_gain_broad_archive_listing(env):
+    store, state = env
+    with pytest.raises(ValueError, match="for NOMAD"):
+        nmr.run(store, "list", provider="legacy", group="3OR")
+    assert state["search_calls"] == 0
+
+
+def test_network_failure_preserves_session_and_request_without_retry(env, monkeypatch):
+    store, state = env
+    from edinburgh_study_agent import nmr_network
+    monkeypatch.setattr(nmr_network, "vpn_adapter", lambda: {"detected": True, "active": False})
+    def fail(*args, **kwargs):
+        state["search_calls"] += 1
+        raise NmrError("NETWORK_UNAVAILABLE", "DO_NOT_ECHO_PRIVATE_ERROR")
+    monkeypatch.setattr(nmr.NomadClient, "search", fail)
+    result = validate(nmr.run(store, "list"))
+    assert result["state"] == "unavailable" and result["code"] == "NETWORK_UNAVAILABLE"
+    assert result["network"]["state"] == "vpn_disconnected"
+    assert result["recovery_action"] == "connect_campus_vpn_then_resume"
+    assert result["automatic_retry"] is False and result["request_id"]
+    assert state["session"] is not None and state["search_calls"] == 1
+    assert "DO_NOT_ECHO" not in json.dumps(result)
+
+
+def test_successful_calls_do_not_launch_vpn_detection(env, monkeypatch):
+    from edinburgh_study_agent import nmr_network
+    monkeypatch.setattr(nmr_network, "vpn_adapter", lambda: pytest.fail("No happy-path VPN process"))
+    store, state = env
+    validate(nmr.run(store, "status"))
+    validate(nmr.run(store, "list"))
+
+
+def test_nomad_list_available_through_real_tool_contract(env, monkeypatch):
+    from edinburgh_study_agent import server
+    store, state = env
+    monkeypatch.setattr(server, "store", lambda: store)
+    result = asyncio.run(server.mcp.call_tool("study_nmr", {"action": "list", "limit": 3}))
+    assert not result.isError
+    value = result.structuredContent
+    contracts.validate_result("study_nmr", value)
+    assert value["state"] == "needs_selection" and value["limit"] == 3
