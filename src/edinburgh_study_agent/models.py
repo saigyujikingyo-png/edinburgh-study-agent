@@ -52,6 +52,23 @@ def aware(value: datetime) -> datetime:
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
+class LearnAttachment(StrictModel):
+    """Stable DOM identity only; temporary transfer addresses never enter records."""
+    parent_native_id: str = Field(pattern=r"^_\d+_\d+$", max_length=100)
+    asset_id: str = Field(pattern=r"^_\d+_\d+$", max_length=100)
+    resource_path: str = Field(pattern=r"^/bbcswebdav/pid-\d+-dt-content-rid-\d+_\d+/xid-\d+_\d+$", max_length=300)
+    filename: str = Field(min_length=1, max_length=201)
+    size_bytes: int = Field(gt=0, le=100*1024*1024)
+    media_type: str = Field(min_length=1, max_length=150)
+
+    @model_validator(mode="after")
+    def identity(self):
+        asset = self.asset_id.lstrip("_")
+        if not self.resource_path.endswith("/xid-" + asset) or "-rid-" + asset + "/" not in self.resource_path:
+            raise ValueError("Attachment asset identifiers disagree.")
+        return self
+
+
 class Item(StrictModel):
     native_id: str = Field(min_length=1, max_length=300)
     kind: Kind
@@ -60,6 +77,7 @@ class Item(StrictModel):
     course_id: str | None = Field(default=None, max_length=300)
     course_title: str | None = Field(default=None, max_length=500)
     service_id: str | None = Field(default=None, max_length=100)
+    attachment: LearnAttachment | None = None
     excerpt: str = Field(min_length=1, max_length=3000)
     due_at: datetime | None = None
     due_date: str | None = None
@@ -93,6 +111,12 @@ class Item(StrictModel):
 
     @model_validator(mode="after")
     def consistent(self):
+        if self.attachment:
+            parent = self.attachment.parent_native_id
+            expected_path = f"/ultra/courses/{self.course_id}/document/{parent}"
+            if (self.kind != "resource" or not self.url or urlsplit(self.url).path != expected_path
+                    or self.native_id != parent + ":attachment:" + self.attachment.asset_id):
+                raise ValueError("Attachment must retain its observed parent document and identity.")
         if self.due_at and self.due_date:
             raise ValueError("Use due_at for an exact time OR due_date when only the day is known.")
         if self.ends_at and (not self.starts_at or self.ends_at <= self.starts_at):

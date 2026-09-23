@@ -31,7 +31,7 @@ def portable_schema(schema, *, output=False):
         # Generated field titles repeat the parameter name and cost prompt tokens.
         node.pop("title",None)
         if "anyOf" in node and not output:
-            alternatives=node.pop("anyOf")
+            alternatives=[convert(part,stack) for part in node.pop("anyOf")]
             kinds=[part.get("type") for part in alternatives]
             # Nullable optional fields have disjoint alternatives: oneOf preserves meaning.
             if len(alternatives)!=2 or kinds.count("null")!=1 or None in kinds:

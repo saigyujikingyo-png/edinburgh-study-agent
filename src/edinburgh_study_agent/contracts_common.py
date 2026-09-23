@@ -76,6 +76,15 @@ PRESENTATION = obj({
 }, ("response_language", "catalog_language", "catalog_fallback", "display_timezone",
     "source_timezone", "bilingual_titles", "direction"))
 
+LEARN_ATTACHMENT = obj({
+    "parent_native_id": {"type":"string", "pattern":r"^_\d+_\d+$", "maxLength":100},
+    "asset_id": {"type":"string", "pattern":r"^_\d+_\d+$", "maxLength":100},
+    "resource_path": {"type":"string", "pattern":r"^/bbcswebdav/pid-\d+-dt-content-rid-\d+_\d+/xid-\d+_\d+$", "maxLength":300},
+    "filename": {"type":"string", "minLength":1, "maxLength":201},
+    "size_bytes": {"type":"integer", "minimum":1, "maximum":100*1024*1024},
+    "media_type": {"type":"string", "minLength":1, "maxLength":150},
+}, ("parent_native_id", "asset_id", "resource_path", "filename", "size_bytes", "media_type"))
+
 ITEM = obj({
     "native_id": {"type": "string", "minLength": 1, "maxLength": 300},
     "kind": KIND,
@@ -84,6 +93,7 @@ ITEM = obj({
     "course_id": nullable({"type": "string", "maxLength": 300}),
     "course_title": nullable({"type": "string", "maxLength": 500}),
     "service_id": nullable({"type": "string", "maxLength": 100}),
+    "attachment": nullable(LEARN_ATTACHMENT),
     "excerpt": {"type": "string", "minLength": 1, "maxLength": 3000},
     "due_at": nullable(TIMESTAMP), "due_date": nullable(DATE),
     "starts_at": nullable(TIMESTAMP), "ends_at": nullable(TIMESTAMP),
@@ -107,9 +117,12 @@ ARTIFACT = obj({
     "sha256": SHA256, "source_page_url": STR, "downloaded_at": TIMESTAMP,
     "title_source": enum("filename"),
     "attachment_binding": obj({
-        "method": enum("unique_visible_preview"), "content_id": IDENTIFIER,
-        "content_path": {"type": "string", "pattern": r"^/ultra/courses/_\d+_\d+/file/_\d+_\d+$", "maxLength": 300},
+        "method": enum("unique_visible_preview", "observed_inline_attachment"), "content_id": IDENTIFIER,
+        "content_path": {"type": "string", "pattern": r"^/ultra/courses/_\d+_\d+/(?:file|document)/_\d+_\d+$", "maxLength": 300},
         "preview_filename": {"type": "string", "minLength": 1, "maxLength": 201},
+        "asset_id": LEARN_ATTACHMENT["properties"]["asset_id"],
+        "resource_path": LEARN_ATTACHMENT["properties"]["resource_path"],
+        "expected_size_bytes": LEARN_ATTACHMENT["properties"]["size_bytes"],
     }, ("method", "content_id", "content_path")),
     "file_exists": BOOL, "reused": BOOL, "verified": BOOL,
     "remote_freshness_checked": BOOL, "signed_urls_stored": enum(False),
@@ -127,3 +140,16 @@ FILE_TEXT = obj({
     "note": STR, "table_reading": STR, "text_truncated": BOOL, "text_length": COUNT,
 }, ("item_id", "filename", "sha256", "source_page_url", "text", "offset", "has_more",
     "extraction_limit_reached", "source_content_is_untrusted", "verified", "text_cache_hit", "note"))
+
+_inline_binding = ARTIFACT["properties"]["attachment_binding"]
+_preview_binding = obj({key:value for key,value in _inline_binding["properties"].items()
+                        if key in {"method","content_id","content_path","preview_filename"}},
+                       ("method","content_id","content_path"))
+_preview_binding["properties"]["method"] = enum("unique_visible_preview")
+_preview_binding["properties"]["content_path"] = {"type":"string", "maxLength":300,
+    "pattern":r"^/ultra/courses/_\d+_\d+/file/_\d+_\d+$"}
+_inline_binding["properties"]["method"] = enum("observed_inline_attachment")
+_inline_binding["properties"]["content_path"] = {"type":"string", "maxLength":300,
+    "pattern":r"^/ultra/courses/_\d+_\d+/document/_\d+_\d+$"}
+_inline_binding["required"] += ["asset_id","resource_path","expected_size_bytes","preview_filename"]
+ARTIFACT["properties"]["attachment_binding"] = {"anyOf":[_preview_binding,_inline_binding]}

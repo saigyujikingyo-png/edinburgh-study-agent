@@ -1,5 +1,6 @@
 """Bounded file failures; messages and recovery never contain transfer URLs."""
 FILE_FAILURES = {
+    "ATTACHMENT_DISCOVERY_INCOMPLETE": ("Some visible attachment cards could not be indexed safely. Read the page and select an independently observed attachment; the page batch was not downloaded.", "read_page"),
     "UNSUPPORTED_CONTAINER": ("This entry is a page, not a directly downloadable file. Read the page and choose an observed attachment.", "read_page"),
     "ATTACHMENT_AMBIGUOUS": ("More than one visible attachment preview was found. No file was selected.", "choose_attachment"),
     "ATTACHMENT_MISMATCH": ("The current page or preview does not match the requested resource. No file was selected.", "refresh_resource"),

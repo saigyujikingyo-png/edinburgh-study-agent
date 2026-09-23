@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "edinburgh-study-agent"
-version = "0.8.6"
+version = "0.8.7"
 description = "UoE Companion: University of Edinburgh resources and personal workflows for AI agents"
 requires-python = ">=3.11"
 readme = "README.md"

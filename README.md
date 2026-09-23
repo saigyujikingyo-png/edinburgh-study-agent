@@ -4,11 +4,11 @@
 
 Manage University of Edinburgh courses, materials and personal study workflows through your preferred AI agent. Independent open-source student project; not a University product.
 
-**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.6)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
+**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.7)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
 
 ## Install and start
 
-1. Download `UoE-Companion-0.8.6-Windows-x64.zip` and extract the entire ZIP.
+1. Download `UoE-Companion-0.8.7-Windows-x64.zip` and extract the entire ZIP.
 2. Double-click **Install.cmd**. In the local setup page, select WorkBuddy or Claude Desktop and choose **Install / update**. Python and plugin dependencies are included; no Git, terminal commands or development checkout are required for this route.
 3. Reload the selected agent's MCP connection. Sign in to the University in the dedicated window when needed; password and MFA stay on the school page.
 4. Ask, for example, "Show my classes this semester" or "Find this course's lecture notes and read the first file".
@@ -27,7 +27,7 @@ Google Chrome or Microsoft Edge must be installed. The wizard reuses existing pr
 | Personal timetable | Published personal Timetabler activities, year/semester/week/date filters and exact occurrence dates; incomplete exam/allocation coverage remains explicit |
 | Course timetable PDF | Verified download, labelled week/day extraction and cached summaries; request a particular week for full cells. Course grids do not prove personal group allocations or calendar dates |
 | Original file delivery | Export selected cached originals as file attachments or a ZIP with a manifest; validate size/SHA-256 before delivery. A destination upload is complete only after its own receipt and readback |
-| Course materials | Name/id resolution, bounded folder search, file-metadata update checks, verified downloads and PDF/Office/text reading; ambiguous results return choices |
+| Course materials | Name/id resolution, bounded folder/document search, inline Word/PDF originals, file-metadata update checks, verified downloads and PDF/Office/text reading; ambiguous results return choices |
 | NMR raw data | Recent personal NOMAD datasets, sample/date search, explicit experiment selection, verified original ZIP downloads and cached reuse; FortiClient guidance on network failure; legacy teaching archive stays separate |
 | Learn updates | Loaded activity rows and course unread counters; full conversation bodies and exhaustive history are not implemented |
 | Events and academic dates | Standard academic dates and Physics & Astronomy public events, plus bounded directory reads; not all University events or vacancies |
@@ -41,6 +41,8 @@ Normal campus reading/downloading uses the plugin's own session, structured DOM 
 Downloads stay on the campus computer. `study_export_files` transfers their verified original bytes through MCP so a capable host can create usable attachments; a local path or resource URI alone is not a cloud file reference. See [file delivery and cloud workflows](docs/FILE_DELIVERY.md). Each person installs independently and uses their own account; never share your private runtime/data directory or connection credentials.
 
 ## Efficiency and acceptance
+
+**0.8.7 discovers embedded Learn originals.** Reading a document indexes its visible attachments with independent identities. Downloading a page resolves those originals without a preview or Save As; keyword lookup checks up to three document pages and reports remaining scope. File identity, name, expected byte count and saved SHA-256 are verified. [Behavior and acceptance boundaries](docs/LEARN_ATTACHMENTS.md).
 
 **0.8.6 makes NOMAD usable without copying a sample number from its website.** List your recent datasets or a date range, choose an observed experiment and download its original ZIP. A real personal dataset was queried and acquired through the daily MCP profile. Network failures inspect the local FortiClient adapter, explain the next action and preserve saved login/selection. No extra tool, dependency, always-running network probe or browser automation is added. [Scope and measured acceptance](docs/NOMAD_ACCEPTANCE.md).
 

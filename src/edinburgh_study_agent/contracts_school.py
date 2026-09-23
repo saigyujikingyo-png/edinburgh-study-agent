@@ -134,6 +134,9 @@ RESOURCE_PAGE = obj({
     "text": STR, "text_truncated": BOOL, "text_length": NN,
     "coverage": enum("partial"), "observation_id": STR, "observed_at": STAMP,
     "source_content_is_untrusted": enum(True),
+    "attachments":arr(ITEM,100),
+    "attachment_discovery":obj({"visible_nodes":NN,"indexed":NN,"skipped":NN,
+        "coverage":enum("visible_document_attachments")}, ("visible_nodes","indexed","skipped","coverage")),
 }, ("live", "item_id", "title", "url", "text", "text_truncated", "coverage",
     "observation_id", "observed_at", "source_content_is_untrusted"))
 
@@ -273,11 +276,14 @@ COURSE_CHOICE = obj({
 MATERIAL_ROW = obj({
     "id": STR, "title": STR, "course_title": nullable(STR),
     "url": nullable(STR), "observed_at": STAMP,
+    "attachment":ITEM["properties"]["attachment"],
 }, ("id", "title", "observed_at"))
 MATERIAL_LIST = paged({
     "items": arr(MATERIAL_ROW, 500), "live": BOOL, "coverage": enum("partial"),
     "remote_freshness_checked": BOOL, "note": STR, "next_step": STR,
     "response_guidance": STR, "needs_resource_selection": BOOL,
+    "document_discovery":obj({"pages_read":{"type":"integer","minimum":0,"maximum":3},
+        "remaining_pages":NN}, ("pages_read","remaining_pages")),
     "suggested_observed_files": arr(obj({"id": STR, "title": STR}, ("id", "title")), 5),
 }, ("items", "total_items", "offset", "has_more", "live", "coverage", "remote_freshness_checked",
     "note", "next_step", "response_guidance"))

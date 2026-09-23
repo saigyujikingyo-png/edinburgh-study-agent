@@ -1,5 +1,12 @@
 # Output contracts and acceptance coverage
 
+Version 0.8.7 adds typed stable inline-attachment metadata to observed items,
+attachment discovery to page reads, bounded document-search coverage to materials
+and original-file parent/asset/size binding to download receipts. Source, compact
+and full job contracts, nullable-model portable discovery and per-file failures
+are covered by `tests/test_learn_attachments.py`. Live source evidence is recorded
+separately in [Learn attachment acceptance](LEARN_ATTACHMENTS.md).
+
 Version 0.8.6 adds bounded personal NOMAD dataset listing and typed FortiClient network recovery to the existing `study_nmr` contract. List results preserve page/limit/total, observation/source and archive ordering; resumed setup retains pagination. Failed live requests retain credentials and selection, set `automatic_retry=false`, and distinguish disconnected, active-but-unreachable and unknown VPN observations. Synthetic scope, selection, pagination, error and secure-form checks supplement the separately recorded live account evidence in [NOMAD acceptance](NOMAD_ACCEPTANCE.md).
 
 Shared rule: **2026-09-14.1**, section 12. Product implementation: **0.8.0 student preview**. Public output contract: **version 1**. These are separate version numbers. Implementation in the checkout does not establish that a release package or an account installation has been accepted.
@@ -49,7 +56,7 @@ Availability: F = full; S = student; D = direct daily tool; A = daily advanced o
 | `study_collections` | F / S / A | C, D, X | Collection rows, evidence and pagination; direct/dispatched synthetic reads agree. |
 | `study_connect_school` | F / S / D | C, J | Login job identity and lifecycle; interactive login/MFA is not performed by contract tests. |
 | `study_deadlines` | F / S / A | C, B | Due dates, unknown dates, cached records and counts; no claim that absent cached assignments are absent at school. |
-| `study_download_files` | F / S / A | C, J | Per-file outcome, partial failure, remaining ids and verified metadata; real transfer and receipt remain separate. |
+| `study_download_files` | F / S / A | C, J | Per-file outcome, bounded page-to-child expansion, partial failure, remaining ids and verified metadata; real transfer and receipt remain separate. |
 | `study_download_resource` | F | C, B | Download identity, bytes, hash, source and freshness; current host download acceptance remains separate. |
 | `study_downloads` | F / S / A | C, D, X | Mixed Learn/NMR records, filename-sourced legacy titles without database rewrites, and daily dispatcher parity; host receipt remains separate. |
 | `study_events` | F / S / D | C, D | Date/null semantics and independent source failures; supported public sources do not mean all University events. |
@@ -62,13 +69,13 @@ Availability: F = full; S = student; D = direct daily tool; A = daily advanced o
 | `study_live_courses` | F / S / D | C, J, F | Course job and typed observations; malformed payload rejection preserves job identity without retry. |
 | `study_live_myed` | F / S / A | C, J | Portal lifecycle and page/link coverage; no fresh MyEd account access is claimed. |
 | `study_live_resources` | F / S / A | C, J | Course-resource rows and bounded traversal metadata; external/LTI and hidden resources remain gaps. |
-| `study_materials` | F / S / D | C, D, J | List/read/download/updates, scope choices, verified text, metadata deltas and resumable partial batches; live discovery/host delivery remain separate. |
+| `study_materials` | F / S / D | C, D, J | List/read/download/updates, inline originals, bounded document traversal and query filtering, scope choices, verified text, metadata deltas and resumable partial batches; host delivery remains separate. |
 | `study_messages` | F / S / D | C, D, J | Activity/counter shapes, unknown versus zero and pagination; Learn conversation bodies remain unimplemented. |
 | `study_more` | D | C, D, X | List/describe/call contracts, operation identity and shared validation; not every advanced operation is invoked in the synthetic suite. |
 | `study_plan` | F / S / A | C, B | Draft allocations, minutes, conflicts and remaining effort; a plan is not a school booking or official requirement. |
 | `study_preferences` | F / S / A | C, B | Saved preferences, optional language list and presentation fields; host/model language quality remains separate. |
 | `study_read_file` | F / S / A | C, D | Verified identity/hash, text offsets, truncation and null continuation; no OCR or host delivery claim. |
-| `study_read_resource` | F / S / A | C, J, B | Inline page versus downloaded file and source freshness; actual authenticated page access remains separate. |
+| `study_read_resource` | F / S / A | C, J, B | Page text and typed attachment discovery versus downloaded original; hidden/stale cards rejected and compact output retains attachment identity. Actual authenticated access remains separate. |
 | `study_read_service` | F / S / A | C, J, B | Service page/result/entry/login/external-provider branches and legacy workflows; not every real service branch is exercised. |
 | `study_results` | F / S / D | C, D, J | Published strings, blank/zero marks, year summaries and coverage; not an official transcript or award calculation. |
 | `study_route` | F | C, B | Named route/observed link and structured invalid arguments; no browser navigation acceptance is claimed. |

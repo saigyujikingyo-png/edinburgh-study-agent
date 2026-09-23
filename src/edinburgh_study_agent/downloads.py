@@ -16,7 +16,8 @@ from .models import now_utc
 from .file_errors import FileDownloadError
 
 ALLOWED_HOSTS = frozenset({"www.learn.ed.ac.uk", "learn.ed.ac.uk",
-    "prod01-euc1-prod01-xythos.prod.files.blackboard.com"})
+    "prod01-euc1-prod01-xythos.prod.files.blackboard.com",
+    "alt-5d1b15b77a8ac.blackboard.com"})
 EXTENSIONS = {".pdf", ".pptx", ".ppt", ".docx", ".doc", ".xlsx", ".xls",
               ".zip", ".csv", ".txt", ".md", ".ipynb"}
 RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1,10)), *(f"LPT{i}" for i in range(1,10))}
@@ -161,6 +162,8 @@ def download_resource(store, item_id, download_url, filename, refresh=False, max
                         stream.write(block)
                 if expected and not response.headers.get("content-encoding") and size!=int(expected):
                     raise FileDownloadError("FILE_VERIFICATION_FAILED", "The file was incomplete; no partial file was retained.")
+                if binding and binding.get("expected_size_bytes") is not None and size != binding["expected_size_bytes"]:
+                    raise FileDownloadError("FILE_VERIFICATION_FAILED", "File size differs from the observed attachment; refresh its page.")
                 try:
                     verify_file(temporary,Path(name).suffix.lower(),response.headers.get("content-type",""))
                 except ValueError as error:
