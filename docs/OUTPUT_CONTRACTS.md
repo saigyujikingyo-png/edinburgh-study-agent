@@ -1,5 +1,7 @@
 # Output contracts and acceptance coverage
 
+Version 0.8.6 adds bounded personal NOMAD dataset listing and typed FortiClient network recovery to the existing `study_nmr` contract. List results preserve page/limit/total, observation/source and archive ordering; resumed setup retains pagination. Failed live requests retain credentials and selection, set `automatic_retry=false`, and distinguish disconnected, active-but-unreachable and unknown VPN observations. Synthetic scope, selection, pagination, error and secure-form checks supplement the separately recorded live account evidence in [NOMAD acceptance](NOMAD_ACCEPTANCE.md).
+
 Shared rule: **2026-09-14.1**, section 12. Product implementation: **0.8.0 student preview**. Public output contract: **version 1**. These are separate version numbers. Implementation in the checkout does not establish that a release package or an account installation has been accepted.
 
 The shared registry now declares output schemas for all **39 public tool names**: **38** in the full catalog, **35** in the student catalog and **15** in the daily catalog. The daily entrypoint exposes **21 advanced operations** through on-demand discovery. All advertised tools have `outputSchema`; each advanced operation has the same complete output contract as its direct tool.

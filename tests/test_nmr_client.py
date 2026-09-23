@@ -413,3 +413,28 @@ def test_download_timeout_is_sanitized_and_not_retried(transport_client, tmp_pat
     error = assert_error("TRANSFER_FAILED", lambda: api.download(DATASET + "-10", tmp_path / "raw.zip", 4096))
     assert PASSWORD not in str(error)
     assert len(seen) == 1
+
+
+def test_recent_dataset_list_is_bounded_personal_and_does_not_invent_sample(transport_client):
+    api, seen = transport_client(lambda request: httpx.Response(200, json=archive_payload(total=31)))
+    result = api.search(page=2, limit=5, start_date="2026-09-01", end_date="2026-09-02")
+    assert dict(seen[0].url.params) == {
+        "dataType": "auto", "currentPage": "2", "pageSize": "5", "userId": USER_ID,
+        "dateRange": "2026-09-01,2026-09-02",
+    }
+    assert result["coverage"] == "bounded_personal_archive"
+    assert result["order"] == "last_archived_desc"
+    assert result["has_more"] is True and result["total_datasets"] == 31
+
+
+def test_recent_list_rejects_scope_mismatch(transport_client):
+    api, _ = transport_client(lambda request: httpx.Response(
+        200, json=archive_payload([archive_row(user={"id": OTHER_USER_ID, "username": "other"})])))
+    assert_error("SCOPE_MISMATCH", lambda: api.search())
+
+
+def test_recent_list_never_browses_other_users_without_a_sample(transport_client):
+    api, seen = transport_client(lambda request: pytest.fail("No shared listing allowed"))
+    with pytest.raises(ValueError, match="your own"):
+        api.search(shared=True)
+    assert not seen

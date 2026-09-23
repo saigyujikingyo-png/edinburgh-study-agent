@@ -1,5 +1,9 @@
 # Releasing
 
+## 0.8.6 NOMAD browsing and VPN guidance
+
+Publish one shared core with the existing 15/35/38 daily/student/full catalogs. Recent NOMAD browsing, retained pagination and VPN diagnostics add no runtime dependency or lifecycle changes. Keep the source live-account result separate from packaged/installed and model-host acceptance. Preserve existing DPAPI sessions and both account connector identities during upgrade. See [NOMAD evidence](NOMAD_ACCEPTANCE.md).
+
 ## 0.8.4 Learn recovery and file updates
 
 The current preview distinguishes campus network/login failures, preserves saved sessions during outages, shares worker exception identity and adds bounded metadata-change checks through `study_materials(operation="updates")`. See [behavior and verification boundaries](LEARN_RECOVERY.md). It includes the earlier 0.8.3 connection repair. Preserve any installed base-plus-overlay receipt during a full upgrade; never replay the old maintenance transaction.

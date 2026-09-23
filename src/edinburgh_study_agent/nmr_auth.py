@@ -24,7 +24,7 @@ import threading
 import time
 from urllib.parse import parse_qs
 
-from .nmr_client import NomadClient
+from .nmr_client import NomadClient, NmrError
 
 
 LEGACY_GROUPS = ("3OR", "2OR")
@@ -304,10 +304,17 @@ class _Panel:
         self.deadline = time.monotonic() + PANEL_TTL_SECONDS
         self.expires_at = datetime.fromtimestamp(time.time() + PANEL_TTL_SECONDS, timezone.utc).isoformat()
         self.attempts = 0
+        self.last_error = None
+        self.network_guidance = None
 
     def receipt(self):
-        return {"url": self.origin + self.path, "connection_id": self.connection_id,
-                "expires_at": self.expires_at, "reachability": "runtime_computer_browser"}
+        result = {"url": self.origin + self.path, "connection_id": self.connection_id,
+                  "expires_at": self.expires_at, "reachability": "runtime_computer_browser"}
+        if self.last_error: result["error_code"] = self.last_error
+        if self.network_guidance:
+            result.update({k: v for k, v in self.network_guidance.items() if k != "message"},
+                          network_message=self.network_guidance["message"])
+        return result
 
     def page(self, *, error=False, complete=False, locale="en"):
         from .nmr_form import render
@@ -443,6 +450,8 @@ def _handler(panel):
                 return
             try:
                 panel.attempts += 1
+                panel.last_error = None
+                panel.network_guidance = None
                 if panel.provider == "nomad":
                     with NomadClient() as connection:
                         session = connection.login(values["username"][0], values["password"][0])
@@ -467,6 +476,16 @@ def _handler(panel):
                     self.respond(200, panel.page(complete=True, locale=self.locale()))
                 else:
                     self.respond(410, "The connection panel expired or was closed. Return to your agent; the request is retained.")
+            except NmrError as exc:
+                from .nmr_network import NETWORK_ERRORS, failure_guidance
+                panel.last_error = exc.code
+                if exc.code in NETWORK_ERRORS:
+                    panel.network_guidance = failure_guidance()
+                    self.respond(503, panel.page(error=panel.network_guidance["network"]["state"], locale=self.locale()))
+                else:
+                    self.respond(401, panel.page(error="authentication" if exc.code == "AUTH_REQUIRED" else True, locale=self.locale()))
+                if panel.attempts >= 5:
+                    panel.stop.set()
             except Exception:
                 self.respond(401, panel.page(error=True, locale=self.locale()))
                 if panel.attempts >= 5:

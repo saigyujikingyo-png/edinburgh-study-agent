@@ -1,5 +1,9 @@
 # Verification
 
+## 0.8.6 NOMAD (2026-09-23)
+
+Recent personal dataset browsing, retained page/date selections and bounded FortiClient VPN guidance are implemented without new tools or dependencies. One real personal dataset was acquired and validated through the daily stdio MCP boundary. Source, package, installation, model-host and destination-delivery gates remain distinct; see [dated NOMAD acceptance](docs/NOMAD_ACCEPTANCE.md).
+
 ## 0.7.1 output-contract implementation (2026-09-14)
 
 The current implementation declares version 1 output schemas for all 37 public tool names: 36 full, 33 student and 13 daily tools. All 21 advanced operations have on-demand output-schema descriptions. Successes retain their fields and add `_contract`; failures return a structured, redacted error. The server validates direct and dispatched results, including the selected payload schema for all 11 school-job actions, with cached validators.

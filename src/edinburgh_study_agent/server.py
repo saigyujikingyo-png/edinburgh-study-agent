@@ -98,14 +98,14 @@ def study_capture(observation: Observation) -> CallToolResult:
     return result(store().capture(observation))
 
 @mcp.tool(annotations=WEB, structured_output=False)
-async def study_nmr(action: Literal["status", "find", "resume", "connect", "reconnect", "download", "forget"] = "status",
+async def study_nmr(action: Literal["status", "list", "find", "resume", "connect", "reconnect", "download", "forget"] = "status",
                     provider: Literal["auto", "nomad", "legacy"] = "auto", sample: str | None = None,
                     request_id: str | None = None, selection_id: str | None = None,
                     group: Literal["3OR", "2OR"] | None = None, start_date: str | None = None,
                     end_date: str | None = None, archive: Literal["archive", "backup"] | None = None,
-                    page: int = 1, limit: int = 10, allow_insecure_http: bool = False,
+                    page: int | None = None, limit: int | None = None, allow_insecure_http: bool = False,
                     max_megabytes: int = 32, ctx: Context | None = None) -> CallToolResult:
-    """Get your NMR raw data directly with a saved connection, without browser GUI. Ask only for missing non-secret sample/source/group fields in chat; a capable host shows a small form. Preserve leading zeros. First use offers a protected credential panel with remember/HTTP consent; connect reuses it, reconnect replaces it, forget removes it. Passwords never enter tool arguments. resume keeps the original download intent. Use study_export_files for verified original bytes. NOMAD and legacy archives are separate; never guess migration or ownership."""
+    """Get your NMR raw data directly with a saved connection, without browser GUI. Use list for your recent NOMAD datasets when the sample number is unknown; dates and pagination are optional. Network failures detect FortiClient VPN state and retain the request. Ask only for missing non-secret sample/source/group fields in chat; a capable host shows a small form. Preserve leading zeros. First use offers a protected credential panel with remember/HTTP consent; connect reuses it, reconnect replaces it, forget removes it. Passwords never enter tool arguments. resume keeps the original download intent. Use study_export_files for verified original bytes. NOMAD and legacy archives are separate; never guess migration or ownership."""
     from .nmr_input import interact
     value = await interact(store(), action, ctx=ctx, provider=provider, sample=sample,
         request_id=request_id, selection_id=selection_id, group=group, start_date=start_date,

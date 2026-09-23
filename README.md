@@ -4,11 +4,11 @@
 
 Manage University of Edinburgh courses, materials and personal study workflows through your preferred AI agent. Independent open-source student project; not a University product.
 
-**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.5)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
+**[Download the Windows x64 student preview](https://github.com/saigyujikingyo-png/edinburgh-study-agent/releases/tag/v0.8.6)** · [Easy installation](docs/EASY_INSTALL.md) · [Agent compatibility](docs/HOSTS.md) · [NMR acquisition](docs/NMR.md)
 
 ## Install and start
 
-1. Download `UoE-Companion-0.8.5-Windows-x64.zip` and extract the entire ZIP.
+1. Download `UoE-Companion-0.8.6-Windows-x64.zip` and extract the entire ZIP.
 2. Double-click **Install.cmd**. In the local setup page, select WorkBuddy or Claude Desktop and choose **Install / update**. Python and plugin dependencies are included; no Git, terminal commands or development checkout are required for this route.
 3. Reload the selected agent's MCP connection. Sign in to the University in the dedicated window when needed; password and MFA stay on the school page.
 4. Ask, for example, "Show my classes this semester" or "Find this course's lecture notes and read the first file".
@@ -28,6 +28,7 @@ Google Chrome or Microsoft Edge must be installed. The wizard reuses existing pr
 | Course timetable PDF | Verified download, labelled week/day extraction and cached summaries; request a particular week for full cells. Course grids do not prove personal group allocations or calendar dates |
 | Original file delivery | Export selected cached originals as file attachments or a ZIP with a manifest; validate size/SHA-256 before delivery. A destination upload is complete only after its own receipt and readback |
 | Course materials | Name/id resolution, bounded folder search, file-metadata update checks, verified downloads and PDF/Office/text reading; ambiguous results return choices |
+| NMR raw data | Recent personal NOMAD datasets, sample/date search, explicit experiment selection, verified original ZIP downloads and cached reuse; FortiClient guidance on network failure; legacy teaching archive stays separate |
 | Learn updates | Loaded activity rows and course unread counters; full conversation bodies and exhaustive history are not implemented |
 | Events and academic dates | Standard academic dates and Physics & Astronomy public events, plus bounded directory reads; not all University events or vacancies |
 | Personal organisation | Dated evidence, collections, tags, local tasks, agenda, study plans and local ICS import/export |
@@ -41,6 +42,8 @@ Downloads stay on the campus computer. `study_export_files` transfers their veri
 
 ## Efficiency and acceptance
 
+**0.8.6 makes NOMAD usable without copying a sample number from its website.** List your recent datasets or a date range, choose an observed experiment and download its original ZIP. A real personal dataset was queried and acquired through the daily MCP profile. Network failures inspect the local FortiClient adapter, explain the next action and preserve saved login/selection. No extra tool, dependency, always-running network probe or browser automation is added. [Scope and measured acceptance](docs/NOMAD_ACCEPTANCE.md).
+
 **0.8.5 checks attachment binding and fixes mixed Learn/NMR download lists.** Ambiguous or mismatched previews stop with a specific result; page-only entries are distinguished from failed transfers. Existing files and saved campus login are retained. [Scope and evidence](docs/DOWNLOAD_INTEGRITY.md).
 
 **0.8.4 improves Learn recovery and file-update checks.** Network and login failures return distinct recovery actions; repeated outage calls avoid starting more browsers. Ask for new course files to compare observed metadata in bounded batches. [Behavior, limits and evidence](docs/LEARN_RECOVERY.md).
@@ -52,7 +55,7 @@ restores forward slashes and explicit quoting. Credentials, account identities,
 retry limits and ownership checks are unchanged. See [repair verification and
 installation boundaries](docs/WORK_COMMAND_REPAIR.md).
 
-Version **0.8.1** fixes NMR connection setup: remember an encrypted teaching-group connection once on Windows, then query samples directly. Missing sample details stay in chat or a supported host form. The redesigned English/Chinese credential form fixes normal-browser POST rejection, and rejected forms can be renewed. NOMAD still has a separate, expiring account session; live NOMAD and individual host credential UX remain unverified. See [NMR usage and limits](docs/NMR.md) and [0.8.1 verification](docs/NMR_CONNECTION_ACCEPTANCE.md). Existing campus workflows and original-file export remain available. Daily/student/full catalogs retain 15/35/38 tools.
+Version **0.8.1** fixes NMR connection setup: remember an encrypted teaching-group connection once on Windows, then query samples directly. Missing sample details stay in chat or a supported host form. The redesigned English/Chinese credential form fixes normal-browser POST rejection, and rejected forms can be renewed. NOMAD still has a separate, expiring account session; live NOMAD was unverified in 0.8.1; the later 0.8.6 result is recorded separately. Individual host credential UX remains a separate gate. See [NMR usage and limits](docs/NMR.md) and [0.8.1 verification](docs/NMR_CONNECTION_ACCEPTANCE.md). Existing campus workflows and original-file export remain available. Daily/student/full catalogs retain 15/35/38 tools.
 
 Installation, tool/protocol checks, real campus reads and real agent/model conversations are separate evidence. This is a **student preview**, with installation and performance results in [INSTALL_PERFORMANCE.md](docs/INSTALL_PERFORMANCE.md). Earlier real Chat/Work and WorkBuddy evidence remains in [WORK_ACCEPTANCE.md](docs/WORK_ACCEPTANCE.md) and [WORKBUDDY_RESULTS.md](docs/WORKBUDDY_RESULTS.md). Those historical checks do not certify every current workflow or another person's account. See [0.7.1 contract coverage](docs/OUTPUT_CONTRACTS.md) and [reproducible protocol measurements](docs/CONTRACT_PERFORMANCE.md).
 
