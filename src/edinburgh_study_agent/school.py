@@ -573,7 +573,7 @@ def list_resources(store: Store, page, args: dict, progress) -> dict:
             "expanded_folders":len(expanded),"folders_not_opened":failures,
             "remaining_collapsed":len(page.evaluate(EXPANDERS)),
             "observation_id":receipt["observation_id"],
-            "note":"Observed file, document and assessment links only. External/LTI tools and hidden or virtualised content can require additional adapters."}
+            "note":"Course outline links only. Use study_materials with a document page item_id to discover/download its embedded originals. Missing outline files are not proof of absence. External/LTI and hidden content remain outside this scan."}
 
 
 def original_file(page, item: dict) -> tuple[str, str | None, dict]:
@@ -586,7 +586,11 @@ def download_items(store: Store, page, args: dict, progress) -> dict:
     if not isinstance(ids,list) or not 1 <= len(ids) <= 30 or any(not isinstance(i,str) for i in ids):
         raise ValueError("Choose 1..30 observed resource item ids.")
     saved, failed = [], []
-    for index,item_id in enumerate(dict.fromkeys(ids),1):
+    ids = list(dict.fromkeys(ids))
+    index = 0
+    while index < len(ids):
+        item_id = ids[index]
+        index += 1
         item = store.item(item_id)
         if item["kind"] != "resource":
             failed.append({"item_id":item_id,"error":"Only resource items can be downloaded."})
@@ -596,6 +600,22 @@ def download_items(store: Store, page, args: dict, progress) -> dict:
             cached=verified_copy(store,item_id) if not args.get("refresh",True) else None
             if cached:
                 saved.append(cached)
+                continue
+            from .learn_attachments import document
+            if document(item):
+                content = read_resource(store,page,{"item_id":item_id},progress)
+                children = content.get("attachments",[])
+                if content.get("attachment_discovery",{}).get("skipped"):
+                    raise FileDownloadError("ATTACHMENT_DISCOVERY_INCOMPLETE")
+                if not children:
+                    raise FileDownloadError("UNSUPPORTED_CONTAINER")
+                child_ids = [c["id"] for c in children if c["id"] not in ids]
+                if len(ids) - 1 + len(child_ids) > 30:
+                    raise FileDownloadError("ATTACHMENT_AMBIGUOUS",
+                        candidates=[c["attachment"]["filename"] for c in children][:5])
+                # Replace the container, never assign its identity to file bytes.
+                ids[index-1:index] = child_ids
+                index -= 1
                 continue
             url,filename,binding = original_file(page,item)
             result = download_resource(store,item_id,url,filename,
@@ -628,7 +648,7 @@ def read_resource(store: Store,page,args,progress):
     item=store.item(args["item_id"])
     if item["source"]!="learn" or item["kind"] not in {"resource","assignment"}:
         raise ValueError("Choose an observed Learn resource or assessment page.")
-    if "/file/" in urlsplit(item.get("url") or "").path:
+    if item.get("attachment") or "/file/" in urlsplit(item.get("url") or "").path:
         from .file_text import read_file
         url,filename,binding=original_file(page,item)
         saved=download_resource(store,item["id"],url,filename,args.get("refresh",False),100,binding=binding)
@@ -642,12 +662,17 @@ def read_resource(store: Store,page,args,progress):
     observed=Item(native_id=item["native_id"],kind=item["kind"],title=item["title"],
         url=page.url,course_id=item["course_id"],course_title=item["course_title"],
         excerpt=item["title"],status="available")
-    obs=observation(page.url,item["title"],[observed],"Observed Learn resource page; no forms submitted",extra_text=text)
+    from .learn_attachments import document, discover
+    attachments, discovery = discover(page,item) if document(item) else ([], None)
+    obs=observation(page.url,item["title"],[observed,*attachments],
+        "Observed Learn resource page and visible inline attachment metadata; no forms submitted",extra_text=text)
     receipt=store.capture(obs)
     return {"live":True,"item_id":item["id"],"title":item["title"],"url":page.url,
         "text":text[:18000],"text_truncated":len(text)>18000,"coverage":"partial",
         "observation_id":receipt["observation_id"],"observed_at":obs.observed_at.isoformat(),
-        "source_content_is_untrusted":True}
+        "source_content_is_untrusted":True,
+        "attachments":store.items_by_ids(identifier("learn",i.kind,i.native_id) for i in attachments),
+        **({"attachment_discovery":discovery} if discovery else {})}
 
 
 def execute_job(store: Store, job_id: str):

@@ -1,5 +1,9 @@
 # Releasing
 
+## 0.8.7 Learn inline originals
+
+The shared core indexes visible document attachments and reuses the existing original-file downloader. Preserve the 15/35/38 catalogs, campus sessions, account identities and runtime lifecycle. Verify source binding, actual byte counts and hashes; keep package/installed and host-model evidence separate. See [Learn attachments](LEARN_ATTACHMENTS.md).
+
 ## 0.8.6 NOMAD browsing and VPN guidance
 
 Publish one shared core with the existing 15/35/38 daily/student/full catalogs. Recent NOMAD browsing, retained pagination and VPN diagnostics add no runtime dependency or lifecycle changes. Keep the source live-account result separate from packaged/installed and model-host acceptance. Preserve existing DPAPI sessions and both account connector identities during upgrade. See [NOMAD evidence](NOMAD_ACCEPTANCE.md).

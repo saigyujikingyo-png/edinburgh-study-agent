@@ -30,6 +30,9 @@ def visible_frame(frame, main):
 
 
 def resolve_original(page, item, navigate):
+    if item.get("attachment"):
+        from .learn_attachments import resolve
+        return resolve(page, item, navigate)
     target = learn_url(item.get("url") or "", item["course_id"])
     path = urlsplit(target).path.rstrip("/")
     match = CONTENT_PATH.fullmatch(path)

@@ -1,5 +1,7 @@
 """One-call material discovery, download and document reading."""
 from datetime import datetime
+import re
+from .learn_attachments import document
 from . import workflow_cache
 from .downloads import verified_copy
 from .file_text import read_file
@@ -75,10 +77,10 @@ def candidates(store,args):
     return [i for i in rows if i["source"]=="learn" and resource_matches(store,i,args.get("query",""))],None
 
 def listing(rows,args,live=False):
-    result=paged([{k:i.get(k) for k in ("id","title","course_title","url","observed_at")} for i in rows],args,14000)
+    result=paged([{k:i.get(k) for k in ("id","title","course_title","url","observed_at","attachment")} for i in rows],args,14000)
     result.update(live=live,coverage="partial",remote_freshness_checked=live,
         note="Bounded observed course resources. Unseen or restricted files are not proven absent.",
-        next_step="Read or download a returned id with study_materials(item_id=..., operation='read' or 'download'). Timetable PDFs use study_timetable(item_id=...).",
+        next_step="Read or download a returned id with study_materials(item_id=..., operation='read' or 'download'). Document pages discover embedded originals; download expands up to 30 files. Timetable PDFs use study_timetable(item_id=...).",
         response_guidance="Return the requested files/content directly. Do not inspect host download folders or install document libraries.")
     return result
 
@@ -89,6 +91,7 @@ def cached(store,args):
     if not rows:return None
     operation=args.get("operation","list")
     if operation=="list":
+        if args.get("item_id") and document(rows[0]):return None
         fresh=all(0<=(now_utc()-datetime.fromisoformat(i["observed_at"])).total_seconds()<TTL for i in rows)
         # A global cache search is explicitly scoped; live traversal needs a course.
         if fresh or not args.get("course"):
@@ -121,21 +124,52 @@ def read(store,page,args,progress):
         school.list_courses(store,page,{"query":args.get("course",""),"max_pages":10},progress)
         rows,choice=candidates(store,args);selected=courses(store,args.get("course",""))
     if choice:return choice
-    if not args.get("item_id") and selected and (args.get("refresh") or not rows or args.get("operation","list")=="list"):
+    if not args.get("item_id") and selected and (args.get("refresh") or not rows or (args.get("operation","list")=="list" and not any(i.get("attachment") for i in rows))):
         value=school.list_resources(store,page,dict(course_id=selected[0]["native_id"],query="",
             max_folders=8,budget_seconds=20,probe_unavailable=True,search_terms=list(terms(args.get("query",""))),
             stop_after_matches=bool(args.get("query"))),progress)
         # Use this traversal's observed set; do not relabel stale retained items as fresh.
         rows=[i for i in value["items"] if i["kind"]=="resource" and resource_matches(store,i,args.get("query",""))]
         live=bool(value.get("live"))
+        if not rows and not args.get("refresh"):
+            indexed,_=candidates(store,args)
+            rows=[i for i in indexed if i.get("attachment")]
+            if rows:live=False
     else:
         live=False
-    if not rows:
-        suggestions=store.list_items("resource",course_id=selected[0]["native_id"],limit=5)["items"] if selected else []
-        return listing([],args,live)|{"suggested_observed_files":[dict(id=i["id"],title=i["title"]) for i in suggestions],
-            "next_step":"No title/folder match in this bounded read. Choose a relevant observed filename/id, or refine the course/title; do not search host directories."}
+    # Index page attachments inside the plugin, so hosts do not write parsers or
+    # repeatedly scan the outline. Reuse known children unless refresh was asked.
     operation=args.get("operation","list")
-    if operation=="list":return listing(rows,args,live)
+    if args.get("item_id") and rows and document(rows[0]) and (operation=="list" or args.get("query")):
+        value=school.read_resource(store,page,{"item_id":rows[0]["id"]},progress)
+        rows=[i for i in value.get("attachments",[]) if resource_matches(store,i,args.get("query",""))]
+        live=True
+        if operation=="list" or not rows:return listing(rows,args,True)
+    discovery=None
+    if not rows and selected and args.get("query"):
+        documents=[i for i in store.list_items("resource",course_id=selected[0]["native_id"],limit=500)["items"]
+                   if i["source"]=="learn" and document(i)]
+        words=[w for term in terms(args["query"]) for w in re.findall(r"\w+",term.casefold()) if len(w)>2]
+        def priority(item):
+            text=(item["title"]+" "+item.get("excerpt","")).casefold()
+            return (-sum(w in text for w in words), "general information" not in text, item["id"])
+        documents.sort(key=priority)
+        scanned=0
+        for parent in documents[:3]:
+            progress("Reading page attachments: "+parent["title"][:100])
+            value=school.read_resource(store,page,{"item_id":parent["id"]},progress)
+            scanned+=1
+            rows.extend(i for i in value.get("attachments",[]) if resource_matches(store,i,args["query"]))
+            if rows:break
+        live=bool(scanned) or live
+        discovery={"pages_read":scanned,"remaining_pages":max(0,len(documents)-scanned)}
+        suggestions=documents[scanned:scanned+5]
+    if not rows:
+        suggestions=suggestions if discovery else (store.list_items("resource",course_id=selected[0]["native_id"],limit=5)["items"] if selected else [])
+        return listing([],args,live)|({"document_discovery":discovery} if discovery else {})|{"suggested_observed_files":[dict(id=i["id"],title=i["title"]) for i in suggestions],
+            "next_step":"No match in this bounded read; unvisited pages may contain attachments. Read/list a suggested page id to discover its files; do not search host directories."}
+    operation=args.get("operation","list")
+    if operation=="list":return listing(rows,args,live)|({"document_discovery":discovery} if discovery else {})
     if operation=="read":
         if len(rows)!=1:return listing(rows,args,live)|{"needs_resource_selection":True}
         item=rows[0]

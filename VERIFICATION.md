@@ -1,5 +1,9 @@
 # Verification
 
+## 0.8.7 Learn inline originals (2026-09-23)
+
+Visible document attachments are indexed independently and downloaded through the verified original-file pipeline. Synthetic regressions cover wrong/hidden/conflicting identities, transfer failures, per-file receipts, bounded search and compact/full contracts. A live source-candidate Word/PDF pair passed filename, size and independent hash checks. Package, installed runtime, host-model and destination delivery are separate gates; see [dated scope](docs/LEARN_ATTACHMENTS.md).
+
 ## 0.8.6 NOMAD (2026-09-23)
 
 Recent personal dataset browsing, retained page/date selections and bounded FortiClient VPN guidance are implemented without new tools or dependencies. One real personal dataset was acquired and validated through the daily stdio MCP boundary. Source, package, installation, model-host and destination-delivery gates remain distinct; see [dated NOMAD acceptance](docs/NOMAD_ACCEPTANCE.md).
